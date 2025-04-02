@@ -29,14 +29,18 @@ jobs:
           sleep 10
           ollama pull codellama
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+    
+      - name: Set up Python
+        uses: actions/setup-python@v4
         with:
-          node-version: '20'
+          python-version: 3.9
+
 
       - name: Install dependencies
         run: |
-          npm install parse-diff minimatch glob
+          python -m pip install --upgrade pip
+          pip install requests
+
 
       - name: Run Code Review
         env:
@@ -48,7 +52,7 @@ jobs:
           FILE_PATTERN: '**/*.{ts,tsx}'
         run: |
           echo "Starting code review process..."
-          node src/main.py
+          python src/main.py
 
       - name: Cleanup
         if: always()

@@ -2,12 +2,14 @@ import os
 import json
 import subprocess
 from pathlib import Path
-from fnmatch import fnmatch
 import requests
+from unidiff import PatchSet
+from stats import ReviewStats
+from github import GitHubAPI
+from ollama import OllamaAPI
 
 # Constants and configuration
-FILE_PATTERN = os.getenv("FILE_PATTERN", "*.ts")  # Default to TypeScript files
-BASE_BRANCH = os.getenv("BASE_BRANCH", "origin/develop")
+BASE_BRANCH = os.getenv("BASE_BRANCH", "origin/master")
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 GITHUB_REPOSITORY = os.getenv("GITHUB_REPOSITORY")
 GITHUB_REPOSITORY_OWNER = os.getenv("GITHUB_REPOSITORY_OWNER")
@@ -55,25 +57,27 @@ def merge_comments(comments):
     return list(merged_comments.values())
 
 # Function to get changed lines from a chunk
-def get_changed_lines(chunk):
+def get_changed_lines(hunk):
     changed_lines = {}
     added_lines = set()
-    for change in chunk["changes"]:
-        if change["type"] in ["add", "normal"]:
-            line_num = change.get("ln") or change.get("ln2")
+
+    for line in hunk:
+        if line.is_added or line.is_context:
+            line_num = line.target_line_no
             if line_num:
                 changed_lines[line_num] = {
-                    "content": change["content"],
-                    "type": change["type"],
+                    "content": line.value,
+                    "type": "add" if line.is_added else "normal",
                     "position": line_num,
                 }
-                if change["type"] == "add":
+                if line.is_added:
                     added_lines.add(line_num)
+
     return {"context": changed_lines, "added_lines": list(added_lines)}
 
 # Function to process a chunk
-def process_chunk(chunk, file, github, ollama):
-    changed_lines = get_changed_lines(chunk)
+def process_chunk(hunk, file, github, ollama):
+    changed_lines = get_changed_lines(hunk)
     if not changed_lines["added_lines"]:
         return
 
@@ -83,7 +87,7 @@ def process_chunk(chunk, file, github, ollama):
         for line_num, line in sorted(changed_lines["context"].items())
     )
 
-    print(f"Reviewing {file['to']} with context:\n{content_with_lines}")
+    print(f"Reviewing {file.path} with context:\n{content_with_lines}")
     print("Changed lines:", changed_lines["added_lines"])
 
     # Call Ollama API for review
@@ -92,9 +96,18 @@ def process_chunk(chunk, file, github, ollama):
         "prompt": f"Review the following code and suggest improvements:\n\n{content_with_lines}",
     }
     headers = {"Content-Type": "application/json"}
-    response = requests.post(OLLAMA_API_URL, headers=headers, json=payload)
-    response.raise_for_status()
-    reviews = response.json()
+
+    try:
+        response = requests.post(OLLAMA_API_URL, headers=headers, json=payload)
+        response.raise_for_status()
+        reviews = response.json()
+    except requests.exceptions.HTTPError as http_err:
+        print(f"HTTP error occurred: {http_err}")
+        print(f"Failed to connect to Ollama API at {OLLAMA_API_URL}. Please ensure the server is running.")
+        return
+    except Exception as err:
+        print(f"An error occurred: {err}")
+        return
 
     comments_to_post = []
     for review in reviews:
@@ -103,7 +116,7 @@ def process_chunk(chunk, file, github, ollama):
             continue
 
         comments_to_post.append({
-            "path": file["to"],
+            "path": file.path,
             "line": review["line"],
             "message": review["message"],
             "type": review.get("type", "info"),
@@ -132,19 +145,19 @@ def process_chunk(chunk, file, github, ollama):
 # Main function
 def main():
     try:
+        # Initialize GitHubAPI and OllamaAPI
+        github = GitHubAPI(GITHUB_TOKEN)
+        ollama = OllamaAPI()
+
         # Get the diff output
         diff_output = subprocess.check_output(["git", "diff", BASE_BRANCH, "HEAD"]).decode("utf-8")
-        files = parse_diff(diff_output)
+        files = PatchSet(diff_output)
 
-        # Filter files to review
-        files_to_review = [file for file in files if fnmatch(file["to"], FILE_PATTERN)]
+        # Process all files
         print(f"Found {len(files)} changed files")
-        print(f"Reviewing {len(files_to_review)} files matching pattern {FILE_PATTERN}")
-
-        # Process chunks
-        for file in files_to_review:
-            for chunk in file["chunks"]:
-                process_chunk(chunk, file, github, ollama)
+        for file in files:
+            for hunk in file:
+                process_chunk(hunk, file, github, ollama)
 
         print("Code review completed successfully")
     except Exception as e:

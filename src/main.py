@@ -7,7 +7,7 @@ import requests
 
 # Constants and configuration
 FILE_PATTERN = os.getenv("FILE_PATTERN", "*.ts")  # Default to TypeScript files
-BASE_BRANCH = os.getenv("BASE_BRANCH", "origin/develop")
+BASE_BRANCH = os.getenv("BASE_BRANCH", "origin/master")
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 GITHUB_REPOSITORY = os.getenv("GITHUB_REPOSITORY")
 GITHUB_REPOSITORY_OWNER = os.getenv("GITHUB_REPOSITORY_OWNER")

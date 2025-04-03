@@ -7,7 +7,7 @@ from config import REVIEW_CONFIG
 
 class OllamaAPI:
     def __init__(self, model="codellama"):
-        self.base_url = "http://localhost:11434"
+        self.base_url = "http://127.0.0.1:11434"
         self.model = model
         self.file_pattern = REVIEW_CONFIG.get("supportedExtensions", "**/*.{ts,tsx}")
 

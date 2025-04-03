@@ -16,7 +16,7 @@ GITHUB_REPOSITORY = os.getenv("GITHUB_REPOSITORY")
 GITHUB_REPOSITORY_OWNER = os.getenv("GITHUB_REPOSITORY_OWNER")
 PR_NUMBER = os.getenv("PR_NUMBER")
 GITHUB_SHA = os.getenv("GITHUB_SHA")
-OLLAMA_API_URL = os.getenv("OLLAMA_API_URL", "http://127.0.0.1:11434/api/generate")
+#OLLAMA_API_URL = os.getenv("OLLAMA_API_URL", "http://127.0.0.1:11434/api/generate")
 
 # Cache for existing comments
 existing_comments_cache = None
@@ -93,13 +93,13 @@ def process_chunk(hunk, file, github, ollama):
 
     # Call Ollama API for review
     payload = {
-        "model": "code-review",
+        "model": "codellama",
         "prompt": f"Review the following code and suggest improvements:\n\n{content_with_lines}",
     }
-    headers = {"Content-Type": "application/json"}
+    #headers = {"Content-Type": "application/json"}
 
     try:
-        response = requests.post(OLLAMA_API_URL, headers=headers, json=payload)
+        response = ollama.make_request("/api/generate", payload)
         response.raise_for_status()
         reviews = response.json()
     except requests.exceptions.HTTPError as http_err:

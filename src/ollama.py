@@ -27,6 +27,7 @@ class OllamaAPI:
         try:
             response = requests.post(url, headers=headers, json=data)
             response.raise_for_status()
+            print("RAW RESPONSE:", response.text)
             return response.json()
         except requests.exceptions.RequestException as e:
             raise Exception(f"Ollama API request failed: {e}")

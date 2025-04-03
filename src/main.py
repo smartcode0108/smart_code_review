@@ -16,7 +16,7 @@ GITHUB_REPOSITORY = os.getenv("GITHUB_REPOSITORY")
 GITHUB_REPOSITORY_OWNER = os.getenv("GITHUB_REPOSITORY_OWNER")
 PR_NUMBER = os.getenv("PR_NUMBER")
 GITHUB_SHA = os.getenv("GITHUB_SHA")
-#OLLAMA_API_URL = os.getenv("OLLAMA_API_URL", "http://127.0.0.1:11434/api/generate")
+
 
 # Cache for existing comments
 existing_comments_cache = None
@@ -96,7 +96,6 @@ def process_chunk(hunk, file, github, ollama):
         "model": "codellama",
         "prompt": f"Review the following code and suggest improvements:\n\n{content_with_lines}",
     }
-    #headers = {"Content-Type": "application/json"}
 
     try:
         response = ollama.make_request("/api/generate", payload)

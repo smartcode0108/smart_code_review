@@ -43,10 +43,10 @@ class GitHubAPI:
         path = f"/repos/{owner}/{repo}/pulls/{pr_number}"
         return self.make_request("GET", path)
 
-    def create_review_comment(self, owner, repo, pr_number, commit_id, path, line, body):
+    def create_review_comment(self, owner, repo, pr_number, commit_id, path, position, body):
         try:
-            pr = self.get_pull_request(owner, repo, pr_number)
-            head_sha = pr["head"]["sha"]
+            if not path or position is None:
+                raise ValueError("Invalid path or position for inline comment.")
 
             review_path = f"/repos/{owner}/{repo}/pulls/{pr_number}/comments"
             return self.make_request(
@@ -54,30 +54,18 @@ class GitHubAPI:
                 review_path,
                 {
                     "body": body,
-                    "commit_id": head_sha,
+                    "commit_id": commit_id,
                     "path": path,
-                    "position": line,
+                    "position": position,
                     "side": "RIGHT",
                 },
             )
+        except ValueError as ve:
+            print(f"Skipping invalid inline comment: {ve}")
+            return None
         except Exception as error:
-            if "position" in str(error):
-                print("Retrying comment creation without position parameter...")
-                review_path = f"/repos/{owner}/{repo}/pulls/{pr_number}/comments"
-                return self.make_request(
-                    "POST",
-                    review_path,
-                    {
-                        "body": body,
-                        "commit_id": head_sha,
-                        "path": path,
-                        "line": line,
-                        "side": "RIGHT",
-                    },
-                )
-            print("Error creating review comment:", error)
+            print(f"Error creating review comment: {error}")
             raise error
-
     def post_comment(self, owner, repo, pr_number, body):
         path = f"/repos/{owner}/{repo}/issues/{pr_number}/comments"
         return self.make_request("POST", path, {"body": body})

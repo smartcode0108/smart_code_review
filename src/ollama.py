@@ -45,6 +45,7 @@ class OllamaAPI:
         try:
             response = requests.post(url, headers=headers, json=data)
             content_type = response.headers.get("Content-Type", "")
+            response.raise_for_status()
             if "application/json" in content_type:
                 return response.json()
             else:

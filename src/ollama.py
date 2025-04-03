@@ -11,6 +11,24 @@ class OllamaAPI:
         self.model = model
         self.file_pattern = REVIEW_CONFIG.get("supportedExtensions", "**/*.{ts,tsx}")
 
+    def _handle_streaming_response(self, response):
+        """
+        Handle streaming response from Ollama API.
+        """
+        try:
+            json_objects = []
+            for line in response.iter_lines():
+                if line:
+                    try:
+                        json_objects.append(json.loads(line))
+                    except json.JSONDecodeError:
+                        continue
+
+            return json_objects
+        except Exception as e:
+            print(f"Error processing streaming response from Ollama API: {e}")
+            return []
+
     def should_review_file(self, filename):
         """
         Check if the file matches the supported file pattern.
@@ -26,9 +44,12 @@ class OllamaAPI:
 
         try:
             response = requests.post(url, headers=headers, json=data)
-            response.raise_for_status()
-            print("RAW RESPONSE:", response.text)
-            return response.json()
+            content_type = response.headers.get("Content-Type", "")
+            if "application/json" in content_type:
+                return response.json()
+            else:
+                return self._handle_streaming_response(response)
+
         except requests.exceptions.RequestException as e:
             raise Exception(f"Ollama API request failed: {e}")
 

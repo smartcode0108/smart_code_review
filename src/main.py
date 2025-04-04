@@ -78,71 +78,70 @@ def get_changed_lines(hunk):
 
 # Function to process a chunk
 def process_chunk(hunk, file, github, ollama):
-    changed_lines = get_changed_lines(hunk)
-    if not changed_lines["added_lines"]:
-        return
-
-    # Create a string with line numbers and content
-    content_with_lines = "\n".join(
-        f"{line_num}: {'[CHANGED]' if line['type'] == 'add' else ''} {line['content'].strip()}"
-        for line_num, line in sorted(changed_lines["context"].items())
-    )
-
-    print(f"Reviewing {file.path} with context:\n{content_with_lines}")
-    print("Changed lines:", changed_lines["added_lines"])
-
-    # Call Ollama API for review
-    payload = {
-        "model": "code-review",
-        "prompt": f"Review the following code and suggest improvements:\n\n{content_with_lines}",
-    }
-    headers = {"Content-Type": "application/json"}
-
     try:
-        response = requests.post(OLLAMA_API_URL, headers=headers, json=payload)
-        response.raise_for_status()
-        reviews = response.json()
+        # Extract the changed lines from the hunk
+        changed_lines = get_changed_lines(hunk)
+
+        # Read the file content from the filesystem
+        file_path = Path(file.path)
+        if not file_path.exists():
+            print(f"File not found: {file.path}")
+            return
+
+        with open(file_path, "r", encoding="utf-8") as f:
+            file_content = f.read()
+
+        # Call Ollama API for review
+        reviews = ollama.review_code(file_content, file.path, changed_lines["added_lines"])
+        print(f"Reviews returned by Ollama: {reviews}")
+        comments_to_post = []
+        general_comments = []
+
+        for review in reviews:
+            if review.get("line") is not None and review.get("path"):
+                # Add inline comment
+                comments_to_post.append({
+                    "path": file.path,
+                    "line": review["line"],
+                    "body": f"{review['message']}"
+                })
+            else:
+                # Add general comment
+                general_comments.append(review["message"])
+
+        # Post inline comments to the PR
+        for comment in comments_to_post:
+            github.create_review_comment(
+                GITHUB_REPOSITORY_OWNER,
+                GITHUB_REPOSITORY.split("/")[1],
+                PR_NUMBER,
+                GITHUB_SHA,
+                comment["path"],
+                comment["line"],
+                comment["body"],
+            )
+            print(f"Posted comment for {comment['path']} at line {comment['line']}")
+
+        # Post general comments to the PR
+        if general_comments:
+            body = "\n\n".join(general_comments)
+            github.create_review_comment(
+                GITHUB_REPOSITORY_OWNER,
+                GITHUB_REPOSITORY.split("/")[1],
+                PR_NUMBER,
+                GITHUB_SHA,
+                None,  # No specific path or line
+                None,
+                body,
+            )
+            print("Posted general comments to the pull request.")
+
     except requests.exceptions.HTTPError as http_err:
         print(f"HTTP error occurred: {http_err}")
-        print(f"Failed to connect to Ollama API at {OLLAMA_API_URL}. Please ensure the server is running.")
         return
     except Exception as err:
         print(f"An error occurred: {err}")
         return
-
-    comments_to_post = []
-    for review in reviews:
-        if review["line"] not in changed_lines["added_lines"]:
-            print(f"Skipping review for invalid line number: {review['line']}")
-            continue
-
-        comments_to_post.append({
-            "path": file.path,
-            "line": review["line"],
-            "message": review["message"],
-            "type": review.get("type", "info"),
-            "severity": review.get("severity", "low"),
-        })
-
-    merged_comments = merge_comments(comments_to_post)
-    existing_comments = get_existing_comments(GITHUB_REPOSITORY_OWNER, GITHUB_REPOSITORY.split("/")[1], PR_NUMBER)
-
-    for comment in merged_comments:
-        if find_existing_comment(existing_comments, comment):
-            print(f"Skipping duplicate comment for {comment['path']}:{comment['line']}")
-            continue
-
-        print(f"Creating comment for {comment['path']} at line {comment['line']}")
-        github.create_review_comment(
-            GITHUB_REPOSITORY_OWNER,
-            GITHUB_REPOSITORY.split("/")[1],
-            PR_NUMBER,
-            GITHUB_SHA,
-            comment["path"],
-            comment["line"],
-            comment["body"],
-        )
-
 # Main function
 def main():
     try:

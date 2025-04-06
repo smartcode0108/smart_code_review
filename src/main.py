@@ -81,6 +81,15 @@ def process_chunk(hunk, file, github, ollama):
     try:
         # Extract the changed lines from the hunk
         changed_lines = get_changed_lines(hunk)
+        if not changed_lines:
+            return
+
+        content_with_lines = "\n".join(
+        f"{line_num}: {'[CHANGED]' if line['type'] == 'add' else ''} {line['content'].strip()}"
+        for line_num, line in sorted(changed_lines["context"].items())
+    )
+        print(f"Reviewing {file.path} with context:\n{content_with_lines}")
+        print("changed_lines", changed_lines["added_lines"])
 
         # Read the file content from the filesystem
         file_path = Path(file.path)

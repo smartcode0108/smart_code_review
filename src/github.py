@@ -68,7 +68,10 @@ class GitHubAPI:
             raise error
     def post_comment(self, owner, repo, pr_number, body):
         path = f"/repos/{owner}/{repo}/issues/{pr_number}/comments"
-        return self.make_request("POST", path, {"body": body})
+        print(f"Posting general comment to {path} with body: {body}")  # Debugging
+        response = self.make_request("POST", path, {"body": body})
+        print(f"Response from GitHub API: {response}")  # Debugging
+        return response
 
     def create_review(self, owner, repo, pr_number, comments, body):
         path = f"/repos/{owner}/{repo}/pulls/{pr_number}/reviews"

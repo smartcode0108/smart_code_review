@@ -111,30 +111,36 @@ def process_chunk(hunk, file, github, ollama):
 
         # Post inline comments to the PR
         for comment in comments_to_post:
-            github.create_review_comment(
-                GITHUB_REPOSITORY_OWNER,
-                GITHUB_REPOSITORY.split("/")[1],
-                PR_NUMBER,
-                GITHUB_SHA,
-                comment["path"],
-                comment["line"],
-                comment["body"],
-            )
-            print(f"Posted comment for {comment['path']} at line {comment['line']}")
+            try: 
+                github.create_review_comment(
+                    GITHUB_REPOSITORY_OWNER,
+                    GITHUB_REPOSITORY.split("/")[1],
+                    PR_NUMBER,
+                    GITHUB_SHA,
+                    comment["path"],
+                    comment["line"],
+                    comment["body"],
+                )
+                print(f"Posted comment for {comment['path']} at line {comment['line']}")
+            except Exception as e:
+                print(f"Error posting comment for {comment['path']} at line {comment['line']}: {e}")
 
         # Post general comments to the PR
         if general_comments:
-            body = "\n\n".join(general_comments)
-            github.create_review_comment(
-                GITHUB_REPOSITORY_OWNER,
-                GITHUB_REPOSITORY.split("/")[1],
-                PR_NUMBER,
-                GITHUB_SHA,
-                None,  # No specific path or line
-                None,
-                body,
-            )
-            print("Posted general comments to the pull request.")
+            try:
+                body = "\n\n".join(general_comments)
+                github.create_review_comment(
+                    GITHUB_REPOSITORY_OWNER,
+                    GITHUB_REPOSITORY.split("/")[1],
+                    PR_NUMBER,
+                    GITHUB_SHA,
+                    None,  # No specific path or line
+                    None,
+                    body,
+                )
+                print("Posted general comments to the pull request.")
+            except Exception as e:
+                print(f"Error posting general comments: {e}")
 
     except requests.exceptions.HTTPError as http_err:
         print(f"HTTP error occurred: {http_err}")

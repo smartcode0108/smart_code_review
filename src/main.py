@@ -81,11 +81,11 @@ def process_chunk(hunk, file, github, ollama):
     try:
         # Extract the changed lines from the hunk
         changed_lines = get_changed_lines(hunk)
-        print(f"Changed lines: {changed_lines}")
+        print(f"Changed lines: {changed_lines}"
 
         # Read the file content from the filesystem
         file_path = Path(file.path)
-        print(f"File path: {file_path}")
+        print(f"File path: {file_pat}")
         if not file_path.exists():
             print(f"File not found: {file.path}")
             return

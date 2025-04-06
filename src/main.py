@@ -1,168 +1,103 @@
-
-import os
+import base64
 import json
-import subprocess
-from pathlib import Path
-import requests
-from unidiff import PatchSet
-from stats import ReviewStats
-from github import GitHubAPI
-from ollama import OllamaAPI
+import logging
+import os
+from flask import Flask, request, jsonify
 
-# Constants and configuration
-BASE_BRANCH = os.getenv("BASE_BRANCH", "origin/master")
-GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
-GITHUB_REPOSITORY = os.getenv("GITHUB_REPOSITORY")
-GITHUB_REPOSITORY_OWNER = os.getenv("GITHUB_REPOSITORY_OWNER")
-PR_NUMBER = os.getenv("PR_NUMBER")
-GITHUB_SHA = os.getenv("GITHUB_SHA")
-OLLAMA_API_URL = os.getenv("OLLAMA_API_URL", "http://127.0.0.1:11434/api/generate")
+from github import post_general_comment, post_inline_comment
+from ollama import review_code
 
-# Cache for existing comments
-existing_comments_cache = None
+app = Flask(__name__)
 
-# Function to get existing comments with caching
-def get_existing_comments(owner, repo, pr_number):
-    global existing_comments_cache
-    if existing_comments_cache is None:
-        url = f"https://api.github.com/repos/{owner}/{repo}/pulls/{pr_number}/comments"
-        headers = {"Authorization": f"token {GITHUB_TOKEN}"}
-        response = requests.get(url, headers=headers)
-        response.raise_for_status()
-        existing_comments_cache = response.json()
-    return existing_comments_cache
 
-# Function to check if a similar comment already exists
-def find_existing_comment(existing_comments, new_comment):
-    for existing in existing_comments:
-        if (
-            existing["path"] == new_comment["path"]
-            and existing["line"] == new_comment["line"]
-            and new_comment["message"][:50] in existing["body"]
-        ):
-            return True
-    return False
+def extract_diff_from_payload(payload):
+    logging.debug("Extracting diffs from payload")
+    files = payload.get("pull_request", {}).get("files", [])
+    diffs = []
+    for f in files:
+        patch = f.get("patch")
+        filename = f.get("filename")
+        if patch and filename:
+            diff_block = f"diff --git a/{filename} b/{filename}\n{patch}"
+            diffs.append(diff_block)
+    logging.debug(f"Extracted {len(diffs)} diff blocks")
+    return "\n".join(diffs)
 
-# Function to merge comments on the same line
-def merge_comments(comments):
-    merged_comments = {}
-    for comment in comments:
-        key = f"{comment['path']}:{comment['line']}"
-        if key not in merged_comments:
-            merged_comments[key] = {
-                **comment,
-                "body": f"💭 **{comment['type'].upper()}** ({comment['severity']})\n\n{comment['message']}",
-            }
-        else:
-            merged_comments[key]["body"] += f"\n\n💭 **{comment['type'].upper()}** ({comment['severity']})\n\n{comment['message']}"
-    return list(merged_comments.values())
 
-# Function to get changed lines from a chunk
-def get_changed_lines(hunk):
-    changed_lines = {}
-    added_lines = set()
-
-    for line in hunk:
-        if line.is_added or line.is_context:
-            line_num = line.target_line_no
-            if line_num:
-                changed_lines[line_num] = {
-                    "content": line.value,
-                    "type": "add" if line.is_added else "normal",
-                    "position": line_num,
-                }
-                if line.is_added:
-                    added_lines.add(line_num)
-
-    return {"context": changed_lines, "added_lines": list(added_lines)}
-
-# Function to process a chunk
-def process_chunk(hunk, file, github, ollama):
+@app.route("/review", methods=["POST"])
+def review():
+    logging.debug("/review endpoint called")
     try:
-        # Extract the changed lines from the hunk
-        changed_lines = get_changed_lines(hunk)
-
-        # Read the file content from the filesystem
-        file_path = Path(file.path)
-        if not file_path.exists():
-            print(f"File not found: {file.path}")
-            return
-
-        with open(file_path, "r", encoding="utf-8") as f:
-            file_content = f.read()
-
-        # Call Ollama API for review
-        reviews = ollama.review_code(file_content, file.path, changed_lines["added_lines"])
-        print(f"Reviews returned by Ollama: {reviews}")
-        comments_to_post = []
-        general_comments = []
-
-        for review in reviews:
-            if review.get("line") is not None and review.get("path"):
-                # Add inline comment
-                comments_to_post.append({
-                    "path": file.path,
-                    "line": review["line"],
-                    "body": f"{review['message']}"
-                })
-            else:
-                # Add general comment
-                general_comments.append(review["message"])
-
-        # Post inline comments to the PR
-        for comment in comments_to_post:
-            github.create_review_comment(
-                GITHUB_REPOSITORY_OWNER,
-                GITHUB_REPOSITORY.split("/")[1],
-                PR_NUMBER,
-                GITHUB_SHA,
-                comment["path"],
-                comment["line"],
-                comment["body"],
-            )
-            print(f"Posted comment for {comment['path']} at line {comment['line']}")
-
-        # Post general comments to the PR
-        if general_comments:
-            body = "\n\n".join(general_comments)
-            github.create_review_comment(
-                GITHUB_REPOSITORY_OWNER,
-                GITHUB_REPOSITORY.split("/")[1],
-                PR_NUMBER,
-                GITHUB_SHA,
-                None,  # No specific path or line
-                None,
-                body,
-            )
-            print("Posted general comments to the pull request.")
-
-    except requests.exceptions.HTTPError as http_err:
-        print(f"HTTP error occurred: {http_err}")
-        return
-    except Exception as err:
-        print(f"An error occurred: {err}")
-        return
-# Main function
-def main():
-    try:
-        # Initialize GitHubAPI and OllamaAPI
-        github = GitHubAPI(GITHUB_TOKEN)
-        ollama = OllamaAPI()
-
-        # Get the diff output
-        diff_output = subprocess.check_output(["git", "diff", BASE_BRANCH, "HEAD"]).decode("utf-8")
-        files = PatchSet(diff_output)
-
-        # Process all files
-        print(f"Found {len(files)} changed files")
-        for file in files:
-            for hunk in file:
-                process_chunk(hunk, file, github, ollama)
-
-        print("Code review completed successfully")
+        payload = request.get_json()
     except Exception as e:
-        print(f"Error in code review process: {e}")
-        exit(1)
+        logging.error(f"Invalid JSON payload: {e}")
+        return jsonify({"error": "Invalid JSON"}), 400
+
+    if not payload:
+        logging.error("No payload received")
+        return jsonify({"error": "Missing payload"}), 400
+
+    event_type = request.headers.get("X-GitHub-Event")
+    logging.debug(f"Received GitHub event: {event_type}")
+    if event_type != "pull_request":
+        return jsonify({"message": "Event ignored"}), 200
+
+    action = payload.get("action")
+    logging.debug(f"PR action: {action}")
+    if action not in ["opened", "synchronize"]:
+        return jsonify({"message": "Action ignored"}), 200
+
+    pull_request = payload.get("pull_request", {})
+    repo = payload.get("repository", {})
+    owner = repo.get("owner", {}).get("login")
+    repo_name = repo.get("name")
+    pull_number = pull_request.get("number")
+    head = pull_request.get("head", {})
+    commit_id = head.get("sha")
+
+    logging.debug(f"Reviewing PR #{pull_number} in repo {owner}/{repo_name}")
+    diff_text = extract_diff_from_payload(payload)
+    if not diff_text:
+        logging.warning("No diff found in payload")
+        return jsonify({"message": "No diff to review"}), 200
+
+    try:
+        review_result = review_code(diff_text)
+        logging.debug(f"Raw review result: {review_result[:500]}")
+
+        if not review_result:
+            logging.warning("No review content returned from Ollama")
+            return jsonify({"message": "Review content empty"}), 200
+
+        try:
+            review_json = json.loads(review_result)
+        except json.JSONDecodeError as e:
+            logging.error(f"Failed to decode review JSON: {e}\nReview text was:\n{review_result}")
+            return jsonify({"error": "Invalid review format"}), 500
+
+        comments = review_json.get("comments", [])
+        comments = [c for c in comments if c.get("file") and c.get("line") and c.get("comment")]
+        logging.debug(f"Filtered {len(comments)} valid inline comments")
+
+        if not comments and not review_json.get("general_comment"):
+            logging.warning("Filtered out all hallucinated comments, nothing to post")
+            return jsonify({"message": "No useful review comments found"}), 200
+
+        for comment in comments:
+            logging.debug(f"Posting comment on {comment['file']}:{comment['line']}")
+            post_inline_comment(owner, repo_name, pull_number, commit_id, comment.get("file"), comment.get("line"), comment.get("comment"))
+
+        general_comment = review_json.get("general_comment")
+        if general_comment:
+            logging.debug("Posting general comment")
+            post_general_comment(owner, repo_name, pull_number, general_comment)
+
+        return jsonify({"message": "Review posted"}), 200
+    except Exception as e:
+        logging.error(f"Review processing failed: {e}")
+        return jsonify({"error": "Processing failed"}), 500
+
 
 if __name__ == "__main__":
-    main()
+    logging.basicConfig(level=logging.DEBUG)
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))

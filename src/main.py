@@ -81,9 +81,11 @@ def process_chunk(hunk, file, github, ollama):
     try:
         # Extract the changed lines from the hunk
         changed_lines = get_changed_lines(hunk)
+        print(f"Changed lines: {changed_lines}")
 
         # Read the file content from the filesystem
         file_path = Path(file.path)
+        print(f"File path: {file_path}")
         if not file_path.exists():
             print(f"File not found: {file.path}")
             return
@@ -152,6 +154,7 @@ def main():
         # Get the diff output
         diff_output = subprocess.check_output(["git", "diff", BASE_BRANCH, "HEAD"]).decode("utf-8")
         files = PatchSet(diff_output)
+        print(f"files: {files}")
 
         # Process all files
         print(f"Found {len(files)} changed files")

@@ -41,6 +41,7 @@ class OllamaAPI:
 
             for line in response.iter_lines():
                 if line:
+                    print(f"Received line: {line.decode('utf-8')}")  # Debugging
                     try:
                         # Parse each line as a JSON object
                         json_object = json.loads(line.decode("utf-8"))
@@ -119,7 +120,7 @@ class OllamaAPI:
             review["message"] = review.get("message", "").strip()
 
             # Add the review to the valid list if it has a message
-            if review["message"]:
+            if review["line"] is not None:
                 valid_reviews.append(review)
 
         print(f"Valid reviews: {valid_reviews}")

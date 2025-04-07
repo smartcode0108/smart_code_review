@@ -1,4 +1,3 @@
-
 import os
 import json
 import subprocess
@@ -16,12 +15,9 @@ GITHUB_REPOSITORY = os.getenv("GITHUB_REPOSITORY")
 GITHUB_REPOSITORY_OWNER = os.getenv("GITHUB_REPOSITORY_OWNER")
 PR_NUMBER = os.getenv("PR_NUMBER")
 GITHUB_SHA = os.getenv("GITHUB_SHA")
-OLLAMA_API_URL = os.getenv("OLLAMA_API_URL", "http://127.0.0.1:11434/api/generate")
 
-# Cache for existing comments
 existing_comments_cache = None
 
-# Function to get existing comments with caching
 def get_existing_comments(owner, repo, pr_number):
     global existing_comments_cache
     if existing_comments_cache is None:
@@ -32,7 +28,6 @@ def get_existing_comments(owner, repo, pr_number):
         existing_comments_cache = response.json()
     return existing_comments_cache
 
-# Function to check if a similar comment already exists
 def find_existing_comment(existing_comments, new_comment):
     for existing in existing_comments:
         if (
@@ -43,7 +38,6 @@ def find_existing_comment(existing_comments, new_comment):
             return True
     return False
 
-# Function to merge comments on the same line
 def merge_comments(comments):
     merged_comments = {}
     for comment in comments:
@@ -51,13 +45,12 @@ def merge_comments(comments):
         if key not in merged_comments:
             merged_comments[key] = {
                 **comment,
-                "body": f"💭 **{comment['type'].upper()}** ({comment['severity']})\n\n{comment['message']}",
+                "body": f":thought_balloon: **{comment['type'].upper()}** ({comment['severity']})\n\n{comment['message']}",
             }
         else:
-            merged_comments[key]["body"] += f"\n\n💭 **{comment['type'].upper()}** ({comment['severity']})\n\n{comment['message']}"
+            merged_comments[key]["body"] += f"\n\n:thought_balloon: **{comment['type'].upper()}** ({comment['severity']})\n\n{comment['message']}"
     return list(merged_comments.values())
 
-# Function to get changed lines from a chunk
 def get_changed_lines(hunk):
     changed_lines = {}
     added_lines = set()
@@ -76,22 +69,19 @@ def get_changed_lines(hunk):
 
     return {"context": changed_lines, "added_lines": list(added_lines)}
 
-# Function to process a chunk
 def process_chunk(hunk, file, github, ollama):
     try:
-        # Extract the changed lines from the hunk
         changed_lines = get_changed_lines(hunk)
         if not changed_lines:
             return
 
         content_with_lines = "\n".join(
-        f"{line_num}: {'[CHANGED]' if line['type'] == 'add' else ''} {line['content'].strip()}"
-        for line_num, line in sorted(changed_lines["context"].items())
-    )
+            f"{line_num}: {'[CHANGED]' if line['type'] == 'add' else ''} {line['content'].strip()}"
+            for line_num, line in sorted(changed_lines["context"].items())
+        )
         print(f"Reviewing {file.path} with context:\n{content_with_lines}")
         print("changed_lines", changed_lines["added_lines"])
 
-        # Read the file content from the filesystem
         file_path = Path(file.path)
         if not file_path.exists():
             print(f"File not found: {file.path}")
@@ -100,7 +90,6 @@ def process_chunk(hunk, file, github, ollama):
         with open(file_path, "r", encoding="utf-8") as f:
             file_content = f.read()
 
-        # Call Ollama API for review
         reviews = ollama.review_code(file_content, file.path, changed_lines["added_lines"])
         print(f"Reviews returned by Ollama: {reviews}")
         comments_to_post = []
@@ -108,17 +97,14 @@ def process_chunk(hunk, file, github, ollama):
 
         for review in reviews:
             if review.get("line") is not None and review.get("path"):
-                # Add inline comment
                 comments_to_post.append({
                     "path": file.path,
                     "line": review["line"],
                     "body": f"{review['message']}"
                 })
             else:
-                # Add general comment
                 general_comments.append(review["message"])
 
-        # Post inline comments to the PR
         for comment in comments_to_post:
             github.create_review_comment(
                 GITHUB_REPOSITORY_OWNER,
@@ -131,7 +117,6 @@ def process_chunk(hunk, file, github, ollama):
             )
             print(f"Posted comment for {comment['path']} at line {comment['line']}")
 
-        # Post general comments to the PR
         if general_comments:
             body = "\n\n".join(general_comments)
             github.create_review_comment(
@@ -139,7 +124,7 @@ def process_chunk(hunk, file, github, ollama):
                 GITHUB_REPOSITORY.split("/")[1],
                 PR_NUMBER,
                 GITHUB_SHA,
-                None,  # No specific path or line
+                None,
                 None,
                 body,
             )
@@ -151,18 +136,15 @@ def process_chunk(hunk, file, github, ollama):
     except Exception as err:
         print(f"An error occurred: {err}")
         return
-# Main function
+
 def main():
     try:
-        # Initialize GitHubAPI and OllamaAPI
         github = GitHubAPI(GITHUB_TOKEN)
         ollama = OllamaAPI()
 
-        # Get the diff output
         diff_output = subprocess.check_output(["git", "diff", BASE_BRANCH, "HEAD"]).decode("utf-8")
         files = PatchSet(diff_output)
 
-        # Process all files
         print(f"Found {len(files)} changed files")
         for file in files:
             for hunk in file:

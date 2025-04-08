@@ -25,41 +25,16 @@ class OllamaAPI:
             raise Exception(f"Ollama API request failed: {e}")
 
     def _handle_streaming_response(self, response):
-        try:
-            json_objects = []
-            current_review = {"response": ""}
-
-            for line in response.iter_lines():
-                if line:
-                    try:
-                        json_object = json.loads(line.decode("utf-8"))
-                        print(f"Received JSON object: {json_object}")  # Debug
-
-                        if "response" in json_object:
-                            current_review["response"] += json_object["response"]
-
-                        if json_object.get("done", False):
-                            current_review.update({
-                                "line": json_object.get("line"),
-                                "type": json_object.get("type"),
-                                "severity": json_object.get("severity"),
-                                "message": current_review["response"].strip()
-                            })
-
-                            if "line" in current_review and "message" in current_review:
-                                json_objects.append(current_review)
-                                print(f"Added valid review: {current_review}")
-
-                            current_review = {"response": ""}
-                    except json.JSONDecodeError:
-                        print(f"Skipping invalid JSON fragment: {line.decode('utf-8')}")
-                        continue
-
-            print(f"Final accumulated reviews: {json_objects}")
-            return json_objects
-        except Exception as e:
-            print(f"Error processing streaming response from Ollama API: {e}")
-            return []
+        code_response = ""
+        for line in response.iter_lines():
+            if line:
+                try:
+                    json_object = json.loads(line.decode("utf-8"))
+                    code_response += json_object["response"]
+                except json.JSONDecodeError:
+                    print(f"Skipping invalid JSON fragment: {line.decode('utf-8')}")
+                    continue
+        return code_response
 
     def review_code(self, content, filename, changed_lines):
         if not self.should_review_file(filename):

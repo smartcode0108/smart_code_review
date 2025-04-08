@@ -30,16 +30,15 @@ class OllamaAPI:
             if line:
                 try:
                     json_object = json.loads(line.decode("utf-8"))
-                    code_response += json_object["response"]
+                    code_response += json_object.get("response", "")
                 except json.JSONDecodeError:
                     print(f"Skipping invalid JSON fragment: {line.decode('utf-8')}")
                     continue
         return code_response
-
     def review_code(self, content, filename, changed_lines):
         if not self.should_review_file(filename):
+            print(f"Skipping review for unsupported file type: {filename}")
             return []
-
         # Fixed prompt to reduce echoing
         prompt = f"""You are an expert code reviewer. Review the code from file `{filename}`.
 Only provide feedback for the following lines: {json.dumps(changed_lines)}.

@@ -82,50 +82,39 @@ def process_chunk(hunk, file, github, ollama):
         print(f"Reviewing {file.path} with context:\n{content_with_lines}")
         print("changed_lines", changed_lines["added_lines"])
 
-        file_path = Path(file.path)
-        if not file_path.exists():
-            print(f"File not found: {file.path}")
-            return
-
-        with open(file_path, "r", encoding="utf-8") as f:
-            file_content = f.read()
-
-        reviews = ollama.review_code(file_content, file.path, changed_lines["added_lines"])
+        reviews = ollama.review_code(content=content_with_lines, filename=file.path, changed_lines=changed_lines["added_lines"])
         print(f"Reviews returned by Ollama: {reviews}")
         comments_to_post = []
         general_comments = []
 
         for review in reviews:
-            if review.get("line") is not None and review.get("path"):
-                comments_to_post.append({
+            if review.get("line") is not None:
+                comment = {
                     "path": file.path,
                     "line": review["line"],
-                    "body": f"{review['message']}"
-                })
+                    "side": "RIGHT",
+                    "body": f"[{review['type'].upper()} - {review['severity'].capitalize()}] {review['message']}",
+                }
+                comments_to_post.append(comment)
             else:
                 general_comments.append(review["message"])
 
-        for comment in comments_to_post:
-            github.create_review_comment(
+        if comments_to_post:
+            github.create_review(
                 GITHUB_REPOSITORY_OWNER,
                 GITHUB_REPOSITORY.split("/")[1],
                 PR_NUMBER,
-                GITHUB_SHA,
-                comment["path"],
-                comment["line"],
-                comment["body"],
+                comments_to_post,
+                body="Automated review by Ollama Code Review Bot",
             )
-            print(f"Posted comment for {comment['path']} at line {comment['line']}")
+            print(f"Posted review with inline commenrs")
 
         if general_comments:
             body = "\n\n".join(general_comments)
-            github.create_review_comment(
+            github.post_comment(
                 GITHUB_REPOSITORY_OWNER,
                 GITHUB_REPOSITORY.split("/")[1],
                 PR_NUMBER,
-                GITHUB_SHA,
-                None,
-                None,
                 body,
             )
             print("Posted general comments to the pull request.")

@@ -88,7 +88,7 @@ def process_chunk(hunk, file, github, ollama):
         general_comments = []
 
         for review in reviews:
-            if review.get("line") is not None and review.get("path"):
+            if review.get("line") is not None:
                 comments_to_post.append({
                     "path": file.path,
                     "line": review["line"],

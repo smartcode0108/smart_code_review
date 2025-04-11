@@ -82,15 +82,7 @@ def process_chunk(hunk, file, github, ollama):
         print(f"Reviewing {file.path} with context:\n{content_with_lines}")
         print("changed_lines", changed_lines["added_lines"])
 
-        file_path = Path(file.path)
-        if not file_path.exists():
-            print(f"File not found: {file.path}")
-            return
-
-        with open(file_path, "r", encoding="utf-8") as f:
-            file_content = f.read()
-
-        reviews = ollama.review_code(file_content, file.path, changed_lines["added_lines"])
+        reviews = ollama.review_code(content=content_with_lines, filename=file.path, changed_lines=changed_lines["added_lines"])
         print(f"Reviews returned by Ollama: {reviews}")
         comments_to_post = []
         general_comments = []

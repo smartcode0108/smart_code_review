@@ -30,7 +30,7 @@ class OllamaAPI:
             if line:
                 try:
                     json_object = json.loads(line.decode("utf-8"))
-                    code_response += json_object["response"]
+                    code_response += json_object.get("response", "")
                 except json.JSONDecodeError:
                     print(f"Skipping invalid JSON fragment: {line.decode('utf-8')}")
                     continue
@@ -38,6 +38,7 @@ class OllamaAPI:
 
     def review_code(self, content, filename, changed_lines):
         if not self.should_review_file(filename):
+            print(f"Skipping review for unsupported file type: {filename}")
             return []
 
         # Fixed prompt to reduce echoing
@@ -80,7 +81,8 @@ Code:
             reviews = response.json().get("response", "[]")
             parsed_reviews = json.loads(reviews)
         else:
-            parsed_reviews = self._handle_streaming_response(response)
+            parsed_response = self._handle_streaming_response(response)
+        parsed_reviews = (f"Parsed reviews: {parsed_response}")
 
         print(f"Parsed reviews: {parsed_reviews}")
 

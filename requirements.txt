@@ -1,2 +1,5 @@
 requests
 unidiff
+autopep8
+diff-cover
+black

@@ -1,29 +1,19 @@
-def add_numbers(a, b):
-    result = a + b
-    return result
+import sys,os
 
-def subtract_numbers(a, b):
-    result = a - b
-    return result
+def add(a,b):return a+b
 
-def multiply_numbers(a, b):
-    result = a * b
-    return result
+def  Subtract(a, b ):
+  result=a - b
+  return result
 
-def divide_numbers(a, b):
-    if b == 0:
-        return "Error: Division by zero"
-    result = a / b
-    return result
+class calculator:
+    def __init__(self,value=0):
+        self.value=value
 
-def main():
-    x = 10
-    y = 5
+    def multiply(self,x):
+        self.value=self.value *x
+        return self.value
 
-    print(f"Addition: {add_numbers(x, y)}")
-    print(f"Subtraction: {subtract_numbers(x, y)}")
-    print(f"Multiplication: {multiply_numbers(x, y)}")
-    print(f"Division: {divide_numbers(x, y)}")
-
-if __name__ == "__main__":
-    main()
+    def divide(self, x ):
+            if x==0:
+                print("Cannot divide by zero")

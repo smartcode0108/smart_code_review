@@ -11,7 +11,7 @@ class OllamaAPI:
         self.file_pattern = REVIEW_CONFIG.get("supportedExtensions", "**/*.{ts,tsx}")
 
     def should_review_file(self, filename):
-        return re.search(self.file_pattern, filename)
+        return bool(re.search(self.file_pattern, filename))
 
     def make_request(self, endpoint, data):
         url = f"{self.base_url}{endpoint}"
@@ -25,46 +25,30 @@ class OllamaAPI:
             raise Exception(f"Ollama API request failed: {e}")
 
     def _handle_streaming_response(self, response):
-        code_response = ""
+        code_response = []
         for line in response.iter_lines():
-            if line:
-                try:
-                    json_object = json.loads(line.decode("utf-8"))
-                    code_response += json_object["response"]
-                except json.JSONDecodeError:
-                    print(f"Skipping invalid JSON fragment: {line.decode('utf-8')}")
-                    continue
-        return code_response
+            if not line:
+                continue
+            try:
+                json_object = json.loads(line.decode("utf-8"))
+                code_response.append(json_object.get("response", ""))
+            except json.JSONDecodeError:
+                print(f"Skipping invalid JSON fragment: {line.decode('utf-8')}")
+        return "".join(code_response)
 
     def review_code(self, content, filename, changed_lines):
         if not self.should_review_file(filename):
+            print(f"Skipping review for unsupported file type: {filename}")
             return []
 
         # Fixed prompt to reduce echoing
-        prompt = f"""You are an expert code reviewer. Review the code from file `{filename}`.
-Only provide feedback for the following lines: {json.dumps(changed_lines)}.
-Each line starts with its line number and a [CHANGED] tag if modified.
-
-Focus on:
-- Type safety
-- Design patterns
-- Readability and maintainability
-- Security issues (use the exact line of risk)
-- Performance
-
-Example output:
-[
-  {{
-    "line": 42,
-    "type": "security",
-    "severity": "high",
-    "message": "Avoid using eval() due to security risks."
-  }}
-]
-
-Code:
-{content}
-"""
+        prompt_template = REVIEW_CONFIG["reviewPrompt"]
+        prompt = prompt_template.format(
+            filename=filename,
+            changed_lines=json.dumps(changed_lines),
+            content=content
+            )
+        print("Prompt sent to ollama:\n", prompt)
 
         response = self.make_request("/api/generate", {
             "model": self.model,
@@ -78,9 +62,19 @@ Code:
         content_type = response.headers.get("Content-Type", "")
         if "application/json" in content_type:
             reviews = response.json().get("response", "[]")
-            parsed_reviews = json.loads(reviews)
+            try:
+                parsed_reviews = json.loads(reviews)
+            except json.JSONDecodeError:
+                print("Failed to parse JSON response")
+                parsed_reviews = []
         else:
-            parsed_reviews = self._handle_streaming_response(response)
+            parsed_response = self._handle_streaming_response(response)
+            try:
+                parsed_reviews = json.loads(parsed_response)
+            except json.JSONDecodeError:
+                print("Failed to parse streamed response")
+                parsed_reviews = []
+
 
         print(f"Parsed reviews: {parsed_reviews}")
 

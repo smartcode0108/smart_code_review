@@ -34,7 +34,17 @@ class OllamaAPI:
                 code_response.append(json_object.get("response", ""))
             except json.JSONDecodeError:
                 print(f"Skipping invalid JSON fragment: {line.decode('utf-8')}")
-        return "".join(code_response)
+                continue
+
+        # Join the responses into a single string
+        concatenated_response = "".join(code_response)
+
+        # Handle empty or malformed concatenated response
+        if not concatenated_response.strip():
+            print("No valid response received from Ollama.")
+            return ""
+
+        return concatenated_response
 
     def review_code(self, content, filename, changed_lines):
         if not self.should_review_file(filename):

@@ -1,29 +1,22 @@
-def add_numbers(a, b):
-    result = a + b
-    return result
-
-def subtract_numbers(a, b):
-    result = a - b
-    return result
-
-def multiply_numbers(a, b):
-    result = a * b
-    return result
-
-def divide_numbers(a, b):
-    if b == 0:
-        return "Error: Division by zero"
-    result = a / b
-    return result
+def calculate_discount(price, discount):
+    final_price = price - (price * discount / 100)
+    return final_price
 
 def main():
-    x = 10
-    y = 5
+    prices = [100, 200, 300, 400]
+    discounts = [10, 20, 30]  # Mismatch in length
 
-    print(f"Addition: {add_numbers(x, y)}")
-    print(f"Subtraction: {subtract_numbers(x, y)}")
-    print(f"Multiplication: {multiply_numbers(x, y)}")
-    print(f"Division: {divide_numbers(x, y)}")
+    for i in range(len(prices)):
+        print("Final price:", calculate_discount(prices[i], discounts[i]))
 
-if __name__ == "__main__":
-    main()
+    
+    total = 0
+
+    
+    max_price = 0
+    for price in prices:
+        if price > max_price:
+            max_price = price
+    print("Max price is", max_price)
+
+main()

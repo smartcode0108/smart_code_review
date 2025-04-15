@@ -32,7 +32,7 @@ Return JSON output like this:
     "line": 42,
     "type": "security",
     "severity": "high",
-    "message": "Avoid using eval() due to security risks."
+    "message": "<specific_issue_and_recommendation>"
   }}
 ]
 

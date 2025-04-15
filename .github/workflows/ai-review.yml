@@ -60,7 +60,7 @@ jobs:
           done < changed_files.txt
           echo "PEP 8 fixes and formatting applied to changed files."
           rm -f changed_files.txt  # Delete the temporary file
-
+    
       - name: Commit and push changes
         run: |
           git config --global user.name "GitHub Actions"
@@ -69,6 +69,32 @@ jobs:
             echo "Changes detected. Committing and pushing..."
             git add .
             git commit -m "Auto-fix PEP 8 issues"
+            git push origin ${{ github.head_ref }}
+          else
+            echo "No changes to commit. Skipping push."
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Identify changed files
+        run: |
+          git diff --name-only origin/${{ github.base_ref }}...${{ github.head_ref }} -- '*.py' > changed_files.txt
+          echo "Changed files:"
+          cat changed_files.txt
+
+      - name: Run Pylint Fix Script
+        run: |
+          python src/fix_pylint_issues.py
+
+      - name: Commit and push changes
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git add --all -- ':!__pycache__' ':!*.pyc'
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "Changes detected. Committing and pushing..."
+            git add .
+            git commit -m "Auto-fix Pylint issues using Ollama"
             git push origin ${{ github.head_ref }}
           else
             echo "No changes to commit. Skipping push."

@@ -1,25 +1,34 @@
 import subprocess
 import os
-import ollama
+from ollama import OllamaAPI
+from unidiff import PatchSet
+import json
+BASE_BRANCH = os.getenv("BASE_BRANCH", "origin/master")
 
-def get_changed_lines(file_path):
-    """Get the changed lines in a file using git diff."""
-    diff_output = subprocess.run(
-        ['git', 'diff', '-U0', file_path],
-        capture_output=True,
-        text=True
-    ).stdout
 
-    changed_lines = []
-    for line in diff_output.splitlines():
-        if line.startswith('@@'):
-            # Extract line range from diff hunk header (e.g., @@ -1,2 +3,4 @@)
-            parts = line.split(' ')
-            added_lines = parts[2]  # e.g., "+3,4"
-            start_line, line_count = map(int, added_lines[1:].split(',')) if ',' in added_lines else (int(added_lines[1:]), 1)
-            changed_lines.extend(range(start_line, start_line + line_count))
+from enum import Enum
 
-    return changed_lines
+class ResponseFormat(Enum):
+   JSON = "json_object"
+   TEXT = "text"
+
+def get_changed_lines(hunk):
+    changed_lines = {}
+    added_lines = set()
+
+    for line in hunk:
+        if line.is_added or line.is_context:
+            line_num = line.target_line_no
+            if line_num:
+                changed_lines[line_num] = {
+                    "content": line.value,
+                    "type": "add" if line.is_added else "normal",
+                    "position": line_num,
+                }
+                if line.is_added:
+                    added_lines.add(line_num)
+
+    return {"context": changed_lines, "added_lines": list(added_lines)}
 
 def run_pylint_on_changed_lines(file_path, changed_lines):
     """Run Pylint on the changed lines of a file."""
@@ -28,14 +37,14 @@ def run_pylint_on_changed_lines(file_path, changed_lines):
         capture_output=True,
         text=True
     ).stdout
-
+    print(f"Full Pylint output for {file_path}:\n{pylint_output}")  # Debugging log
     # Filter Pylint output to include only issues in the changed lines
     filtered_output = []
     for line in pylint_output.splitlines():
         if any(f"{file_path}:{line_num}:" in line for line_num in changed_lines):
             filtered_output.append(line)
-
     return '\n'.join(filtered_output)
+
 def generate_ollama_fix_prompt(pylint_feedback, file_path):
     """Generates a prompt for Ollama to suggest fixes based on Pylint feedback."""
     try:
@@ -63,53 +72,96 @@ def generate_ollama_fix_prompt(pylint_feedback, file_path):
     """
     return prompt
 
-def get_ollama_fixes(pylint_feedback, file_path):
+def get_ollama_fixes(ollama, pylint_feedback, file_path):
     """Use Ollama to get code fixes based on Pylint feedback."""
     prompt = generate_ollama_fix_prompt(pylint_feedback, file_path)
-    response = ollama.generate(
-        model="codellama",
-        prompt=prompt,
-        options={"temperature": 0},
-    )
-    print(f"Ollama Response for {file_path}:\n{response.get('response', '')}")
-    return response.get("response", "")
+    response = ollama.make_request("/api/generate", {
+            "model": "codellama",
+            "prompt": prompt,
+            "stream": True,
+            "temperature": 0.1,
+            "top_k": 10,
+            "top_p": 0.9
+        })
+    
+    # Print the raw response for debugging
+    concatenated_response = ollama._handle_streaming_response(response)
 
+    # Print the concatenated response for debugging
+    print(f"Concatenated Ollama Response for {file_path}:\n{concatenated_response}")
+
+      # Attempt to parse the concatenated response as JSON
+    try:
+        response_data = json.loads(concatenated_response)
+        if isinstance(response_data, dict) and "response" in response_data:
+            fixed_code = response_data["response"]
+        else:
+            print(f"Unexpected response format for {file_path}: {response_data}")
+            return None
+    except json.JSONDecodeError:
+        # If JSON decoding fails, assume the response is plain text with code
+        print(f"JSON decoding failed for {file_path}. Using raw response as fixes.")
+        fixed_code = concatenated_response.strip()
+
+    # Extract Python code from the response
+    if "```python" in fixed_code:
+        fixed_code = fixed_code.split("```python")[1].split("```")[0].strip()
+    elif "```" in fixed_code:
+        fixed_code = fixed_code.split("```")[1].split("```")[0].strip()
+
+    return fixed_code
+    
 def apply_ollama_fixes(file_path, fixes):
     """Applies the suggested fixes to the file."""
-    if not fixes.strip():
-        print(f"No fixes provided for {file_path}.")
+    if not fixes or not fixes.strip():
+        print(f"No valid fixes provided for {file_path}. Skipping file.")
         return
 
-    with open(file_path, 'w') as file:
-        file.write(fixes)
-    print(f"Fixes applied to {file_path}.")
+    try:
+        print(f"Writing fixes to {file_path}:\n{fixes}")  # Debugging log
+        with open(file_path, 'a') as file:
+            file.write(fixes)
+        print(f"Fixes successfully applied to {file_path}.")
+    except Exception as e:
+        print(f"Error writing fixes to {file_path}: {e}")
 
-def process_file(file_path):
+def process_file(ollama, hunk, file_path):
     """Process a single file: run Pylint on changed lines and apply fixes."""
-    print(f"Processing file: {file_path}")
-    changed_lines = get_changed_lines(file_path)
+    print(f"Processing hunk in file: {file_path}")
+    changed_lines = get_changed_lines(hunk)
     if not changed_lines:
         print(f"No changes detected in {file_path}. Skipping Pylint.")
         return
 
-    pylint_feedback = run_pylint_on_changed_lines(file_path, changed_lines)
+    pylint_feedback = run_pylint_on_changed_lines(file_path, changed_lines["added_lines"])
     print(f"Pylint Feedback for {file_path}:\n{pylint_feedback}")
 
-    # Here you can integrate Ollama to fix the issues if needed
-    # For now, just print the feedback
     if pylint_feedback:
         print(f"Pylint issues detected in {file_path}:\n{pylint_feedback}")
+        fixes = get_ollama_fixes(ollama, pylint_feedback, file_path)
+        if fixes:
+            print(f"Ollama suggested fixes for {file_path}:\n{fixes}")
+            apply_ollama_fixes(file_path, fixes)
+        else:
+            print(f"No valid fixes suggested by Ollama for {file_path}.")
     else:
         print(f"No Pylint issues detected in {file_path}.")
 
 def main():
     """Main function to process all changed Python files."""
-    with open("changed_files.txt", "r") as file:
-        changed_files = file.read().splitlines()
+    ollama = OllamaAPI()
+    diff_output = subprocess.check_output(["git", "diff", BASE_BRANCH, "HEAD"]).decode("utf-8")
+    changed_files = PatchSet(diff_output)
+    print(f"Found {len(changed_files)} changed files")
+    
+    for patched_file in changed_files:
+        file_path = patched_file.path 
+        if not file_path.endswith(".py"): # Extract the file path from the PatchedFile object
+            print(f"Processing file: {file_path}")
+            continue
 
-    for file_path in changed_files:
-        if file_path.endswith(".py"):
-            process_file(file_path)
+        for hunk in patched_file:
+            process_file(ollama,hunk, file_path)
 
 if __name__ == "__main__":
     main()

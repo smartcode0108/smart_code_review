@@ -1,22 +1,31 @@
-def calculate_discount(price, discount):
-    final_price = price - (price * discount / 100)
-    return final_price
+import sys,os
 
-def main():
-    prices = [100, 200, 300, 400]
-    discounts = [10, 20, 30]  # Mismatch in length
+def add(a,b):return a+b
 
-    for i in range(len(prices)):
-        print("Final price:", calculate_discount(prices[i], discounts[i]))
+def  Subtract(a, b ):
+  result=a - b
+  return result
 
-    
-    total = 0
+class calculator:
+    def __init__(self,value=0):
+        self.value=value
 
-    
-    max_price = 0
-    for price in prices:
-        if price > max_price:
-            max_price = price
-    print("Max price is", max_price)
+    def multiply(self,x):
+        self.value=self.value *x
+        return self.value
+
+    def divide(self, x ):
+            if x==0:
+                print("Cannot divide by zero")
+                return None
+            return self.value /x
+
+
+def main( ):
+    calc = calculator( )
+    print("Add:", add(5,10))
+    print("Subtract:",Subtract(10,5))
+    print("Multiply:", calc.multiply( 2 ))
+    print("Divide:",calc.divide(0) )
 
 main()

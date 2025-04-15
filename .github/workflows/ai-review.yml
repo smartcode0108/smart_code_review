@@ -44,32 +44,6 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-      
-      - name: Identify changed files
-        run: |
-          git diff --name-only origin/${{ github.base_ref }}...${{ github.head_ref }} -- '*.py' > changed_files.txt
-          echo "Changed files:"
-
-      - name: Run Pylint Fix Script
-        run: |
-          python fix_pylint_issues.py
-
-      - name: Confirm Changes
-        uses: hmarr/auto-approve-action@v3
-        with:
-          message: |
-            The following files have been modified by Ollama and Pylint:
-            $(git status --short)
-
-      - name: Commit and push changes
-        run: |
-          git config --global user.name "GitHub Actions"
-          git config --global user.email "actions@github.com"
-          git add .
-          git commit -m "Auto-fix Pylint issues using Ollama"
-          git push origin ${{ github.head_ref }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Run Code Review
         env:

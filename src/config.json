@@ -1,0 +1,23 @@
+{
+    "github": {
+      "host": "api.github.com",
+      "user": "smartcode0108"
+    },
+    "slack": {
+      "url": "https://slack.com/api/chat.postMessage",
+      "token": "xoxb-170704597090-990995563940-NAKqqRPnpL1TGf5IikyPY3EH"
+    },
+    "review_profiles": {
+      "ds_team": [
+        "tiwaryshobhit",
+        "Itsmeonlinetoday",
+        "Vojjala-Shivani"
+      ],
+      "ds_team_imp": [
+        "tiwaryshobhit",
+        "Itsmeonlinetoday",
+        "Vojjala-Shivani",
+        "Itsmeonlinetoday"
+      ]
+    }
+  }

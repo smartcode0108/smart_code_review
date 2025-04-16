@@ -180,3 +180,12 @@ def main():
 
 if __name__ == "__main__":
     main()
+This script processes all changed Python files in a Git repository and applies Ollama fixes to any Pylint issues detected in the changed code. The script uses the `git diff` command to compare the changes between the current branch and the specified base branch (in this case, "HEAD"), which is assumed to be a stable branch with known good code.
+
+The script first extracts all changed files from the Git repository using the `PatchSet` class from the `diff-match-patch` library. It then iterates through each patched file and processes any Python files that have been modified (based on their file extension).
+
+For each file, the script uses the `get_changed_lines()` function to extract a list of added lines for the file. It then runs Pylint on these added lines using the `run_pylint_on_changed_lines()` function and extracts any issues detected by Pylint as a string.
+
+If there are any issues detected, the script uses the `get_ollama_fixes()` function to request Ollama for suggested fixes. The script then applies these fixes using the `apply_ollama_fixes()` function.
+
+Finally, the script prints a summary message indicating how many files were processed and any issues or errors that occurred during the process.

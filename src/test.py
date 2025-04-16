@@ -1,22 +1,19 @@
-def calculate_discount(price, discount):
-    final_price = price - (price * discount / 100)
-    return final_price
+import os
+import sys  
 
-def main():
-    prices = [100, 200, 300, 400]
-    discounts = [10, 20, 30]  # Mismatch in length
+def greet(name):
+    print("Hello, " + name)
 
-    for i in range(len(prices)):
-        print("Final price:", calculate_discount(prices[i], discounts[i]))
+def unused_function():
+    x = 5
+    y = 6
+    return x + y
 
-    
-    total = 0
+class Person:
+    def __init__(self, name, age):
+         self.name = name
+         self.age = age
+    def get_details(self):
+        return f"{self.name} is {self.age} years old."
 
-    
-    max_price = 0
-    for price in prices:
-        if price > max_price:
-            max_price = price
-    print("Max price is", max_price)
-
-main()
+greet("Alice")

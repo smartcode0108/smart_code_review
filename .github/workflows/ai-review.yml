@@ -76,6 +76,43 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Get list of changed Python files
+        id: changed
+        run: |
+          files=$(git diff --name-only origin/${{ github.base_ref }}...HEAD -- '*.py')
+          echo "$files"
+          echo "CHANGED_FILES<<EOF" >> $GITHUB_ENV
+          echo "$files" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
+      - name: Run cleanup tools only on changed files
+        if: env.CHANGED_FILES != ''
+        run: |
+          for file in $CHANGED_FILES; do
+            echo "🔧 Processing $file"
+            autoflake --remove-all-unused-imports --remove-unused-variables --in-place --recursive "$file" 
+            isort --recursive --apply "$file" 
+            pydocstring "$file"
+            echo "🔍 Running vulture (won't fail on warnings)..."
+            vulture "$file" || echo "Vulture found issues in $file"
+            docformatter --in-place "$file"
+          done
+
+      - name: Commit and push changes
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "Changes detected. Committing and pushing..."
+            git add .
+            git commit -m "Auto-fix pylint  issues"
+            git push origin ${{ github.head_ref }}
+          else
+            echo "No changes to commit. Skipping push."
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Run Code Review
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -118,8 +155,6 @@ jobs:
             }
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_TOKEN }}
-
-
 
       - name: Cleanup
         if: always()

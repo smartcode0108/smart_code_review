@@ -3,3 +3,8 @@ unidiff
 autopep8
 diff-cover
 black
+autoflake 
+isort  
+pydocstring
+docformatter
+vulture

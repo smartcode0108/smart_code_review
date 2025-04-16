@@ -8,3 +8,6 @@ isort
 pydocstring
 docformatter
 vulture
+ast
+sys
+requests

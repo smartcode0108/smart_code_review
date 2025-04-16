@@ -91,11 +91,8 @@ jobs:
           for file in $CHANGED_FILES; do
             echo "🔧 Processing $file"
             autoflake --remove-all-unused-imports --remove-unused-variables --in-place --recursive "$file" 
-            isort --recursive --apply "$file" 
-            pydocstring "$file"
             echo "🔍 Running vulture (won't fail on warnings)..."
             vulture "$file" || echo "Vulture found issues in $file"
-            docformatter --in-place "$file"
           done
 
       - name: Commit and push changes
@@ -109,6 +106,30 @@ jobs:
             git push origin ${{ github.head_ref }}
           else
             echo "No changes to commit. Skipping push."
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate docstrings using Ollama
+        run: |
+          for file in $CHANGED_FILES; do
+            if [[ "$file" == *.py ]]; then
+              echo "🧠 Running docstring generator on $file"
+              python scripts/add_docstrings.py "$file"
+            fi
+          done
+      
+      - name: Commit and push docstring changes
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "📦 Docstring changes detected. Committing..."
+            git add .
+            git commit -m "🤖 Auto-generate docstrings using Ollama"
+            git push origin ${{ github.head_ref }}
+          else
+            echo "✅ No docstring changes to commit."
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

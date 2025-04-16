@@ -4,8 +4,7 @@
       "user": "smartcode0108"
     },
     "slack": {
-      "url": "https://slack.com/api/chat.postMessage",
-      "token": "xoxb-170704597090-990995563940-NAKqqRPnpL1TGf5IikyPY3EH"
+      "url": "https://slack.com/api/chat.postMessage"
     },
     "review_profiles": {
       "ds_team": [

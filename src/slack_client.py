@@ -1,5 +1,7 @@
+import os
 import requests
 import json
+from slack_sdk import WebClient
 
 with open('config.json') as f:
     config = json.load(f)
@@ -7,7 +9,7 @@ with open('config.json') as f:
 class SlackClient:
     def __init__(self,username):
         self.url = config['slack']['url']
-        self.token = config['slack']['token']
+        self.token = os.getenv("SLACK_TOKEN")
         self.username = username
 
     def send_message(self, channel, message):

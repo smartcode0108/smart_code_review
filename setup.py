@@ -7,7 +7,7 @@ setup(
     name="Smart-code-review-bot",
     version="0.1.0",
     author="PRWise Check Team",
-    author_email="asif.masood@dellteam.com, shobhit.tiwary@dellteam.com, " \
+    author_email="asif.masood@dellteam.com, shobhit.tiwary@dellteam.com, "
     "suchithra.k@dellteam.com, vojjala.shivani@dellteam.com",
     description="A GitHub code review bot using Ollama AI",
     long_description=open("README.md").read(),
@@ -26,6 +26,4 @@ setup(
         "console_scripts": ["ollama-code-review-bot=ollama_code_review_bot.main:main"],
     },
     include_package_data=True,
-
 )
-

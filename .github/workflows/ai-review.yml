@@ -21,7 +21,7 @@ jobs:
       - name: Get changed files
         id: changed-files
         uses: tj-actions/changed-files@v42
-
+    
       - name: Install Ollama
         run: |
           curl -fsSL https://ollama.com/install.sh | sh
@@ -87,6 +87,39 @@ jobs:
         run: |
           echo "Starting code review process..."
           python src/main.py
+
+      - name: Send Slack Notification
+        if: github.event_name == 'pull_request' && github.event.action == 'opened'
+        uses: slackapi/slack-github-action@v1.23.0
+        with:
+          channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
+          payload: |
+            {
+              "username": "GitHub PR Bot",
+              "attachments": [
+                {
+                  "color": "good",
+                  "title": "New Pull Request Created",
+                  "text": "A new pull request has been created in *${{ github.repository }}*.",
+                  "fields": [
+                    {
+                      "title": "PR Title",
+                      "value": "${{ github.event.pull_request.title }}",
+                      "short": true
+                    },
+                    {
+                      "title": "PR URL",
+                      "value": "<${{ github.event.pull_request.html_url }}|View Pull Request>",
+                      "short": false
+                    }
+                  ]
+                }
+              ]
+            }
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_TOKEN }}
+
+
 
       - name: Cleanup
         if: always()

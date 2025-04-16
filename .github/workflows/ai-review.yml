@@ -35,6 +35,7 @@ jobs:
             sleep 2
           done
           ollama pull codellama || { echo "Failed to pull codellama model"; exit 1; }
+          ollama pull codegemma:7b-instruct || { echo "Failed to pull codegemma model"; exit 1; }
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -45,37 +46,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-
-      - name: Fix PEP 8 and format files with Black
-        run: |
-          echo "Identifying files with changes..."
-          git diff --name-only origin/${{ github.base_ref }}...${{ github.head_ref }} -- '*.py' > changed_files.txt
-          echo "Files with changes:"
-          
-          echo "Applying autopep8 and black to changed files..."
-          while IFS= read -r file; do
-            echo "Fixing file: $file"
-            autopep8 --in-place --global-config /dev/null --max-line-length 120 "$file"
-            black "$file"
-          done < changed_files.txt
-          echo "PEP 8 fixes and formatting applied to changed files."
-          rm -f changed_files.txt  # Delete the temporary file
-
-      - name: Commit and push changes
-        run: |
-          git config --global user.name "GitHub Actions"
-          git config --global user.email "actions@github.com"
-          if [ -n "$(git status --porcelain)" ]; then
-            echo "Changes detected. Committing and pushing..."
-            git add .
-            git commit -m "Auto-fix PEP 8 issues"
-            git push origin ${{ github.head_ref }}
-          else
-            echo "No changes to commit. Skipping push."
-          fi
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
+      
       - name: Get list of changed Python files
         id: changed
         run: |
@@ -85,37 +56,53 @@ jobs:
           echo "$files" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
 
-      - name: Run cleanup tools only on changed files
-        if: env.CHANGED_FILES != ''
+      - name: Fix PEP 8 and pylint format files with Black
         run: |
+          echo "Identifying files with changes..."
+          echo "Files with changes:"
+          echo "$CHANGED_FILES"
+
+          echo "Applying autopep8, black, and autoflake to changed files..."
           for file in $CHANGED_FILES; do
-            echo "🔧 Processing $file"
-            autoflake --remove-all-unused-imports --remove-unused-variables --in-place --recursive "$file" 
-            echo "🔍 Running vulture (won't fail on warnings)..."
-            vulture "$file" || echo "Vulture found issues in $file"
+            if [ ! -f "$file" ]; then
+              echo "Skipping file $file as it does not exist."
+              continue
+            fi
+            echo "Fixing file: $file"
+            autopep8 --in-place --global-config /dev/null --max-line-length 75 "$file"
+            black "$file"
+            autoflake --remove-all-unused-imports --remove-unused-variables --in-place "$file"
           done
+          echo "PEP 8 fixes and formatting applied to changed files."
 
       - name: Commit and push changes
         run: |
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
           if [ -n "$(git status --porcelain)" ]; then
-            echo "Changes detected. Committing and pushing..."
+            echo "Changes detected. Preparing to commit..."
             git add .
-            git commit -m "Auto-fix pylint  issues"
-            git push origin ${{ github.head_ref }}
+            LAST_COMMIT_MESSAGE=$(git log -1 --pretty=%B || echo "")
+            if [[ "$LAST_COMMIT_MESSAGE" == "Auto-fix PEP 8 and pylint issues" ]]; then
+              echo "Amending the last commit..."
+              git commit --amend --no-edit
+            else
+              echo "Creating a new commit..."
+              git commit -m "Auto-fix PEP 8 and pylint issues"
+            fi
+            git push --force-with-lease origin ${{ github.head_ref }}
           else
             echo "No changes to commit. Skipping push."
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
+          
       - name: Generate docstrings using Ollama
         run: |
           for file in $CHANGED_FILES; do
             if [[ "$file" == *.py ]]; then
-              echo "🧠 Running docstring generator on $file"
-              python scripts/add_docstrings.py "$file"
+              echo "Running docstring generator on $file"
+              python src/doc_string.py "$file"
             fi
           done
       
@@ -124,10 +111,17 @@ jobs:
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
           if [ -n "$(git status --porcelain)" ]; then
-            echo "📦 Docstring changes detected. Committing..."
+            echo "📦 Docstring changes detected. Preparing to commit..."
             git add .
-            git commit -m "🤖 Auto-generate docstrings using Ollama"
-            git push origin ${{ github.head_ref }}
+            LAST_COMMIT_MESSAGE=$(git log -1 --pretty=%B || echo "")
+            if [[ "$LAST_COMMIT_MESSAGE" == "🤖 Auto-generate docstrings using Ollama" ]]; then
+              echo "Amending the last commit..."
+              git commit --amend --no-edit
+            else
+              echo "Creating a new commit..."
+              git commit -m "🤖 Auto-generate docstrings using Ollama"
+            fi
+            git push --force-with-lease origin ${{ github.head_ref }}
           else
             echo "✅ No docstring changes to commit."
           fi
@@ -135,6 +129,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Run Code Review
+        if: github.event_name == 'pull_request' && (github.event.action == 'opened' || github.event.action == 'synchronize')
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -142,10 +137,26 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_SHA: ${{ github.event.pull_request.head.sha }}
           FILE_PATTERN: '**/*.{ts,tsx}'
+          LAST_REVIEWED_SHA_FILE: .last_reviewed_sha
         run: |
-          echo "Starting code review process..."
-          python src/main.py
-
+          echo "Starting code review process ..."
+          if [ -f $LAST_REVIEWED_SHA_FILE ]; then
+            LAST_REVIEWED_SHA=$(cat $LAST_REVIEWED_SHA_FILE)
+            if [ $LAST_REVIEWED_SHA != $GITHUB_SHA ]; then
+              # Run code review only for new changes
+              CHANGED_FILES=$(git diff --name-only $LAST_REVIEWED_SHA $GITHUB_SHA)
+              echo "Running code review for new changes: $CHANGED_FILES"
+              python src/main.py $CHANGED_FILES
+            else
+              echo "No new changes, skipping code review..."
+            fi
+          else
+            # Run code review for all files
+            echo "Running code review for all files..."
+            python src/main.py
+          fi
+          echo $GITHUB_SHA > $LAST_REVIEWED_SHA_FILE
+      
       - name: Send Slack Notification
         if: github.event_name == 'pull_request' && github.event.action == 'opened'
         uses: slackapi/slack-github-action@v1.23.0

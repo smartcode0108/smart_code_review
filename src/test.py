@@ -1,22 +1,13 @@
-def calculate_discount(price, discount):
-    final_price = price - (price * discount / 100)
-    return final_price
+import os, sys 
 
-def main():
-    prices = [100, 200, 300, 400]
-    discounts = [10, 20, 30]  # Mismatch in length
+def  add(a,b   ):
+  return a+b  
 
-    for i in range(len(prices)):
-        print("Final price:", calculate_discount(prices[i], discounts[i]))
+class myclass:  
+ def __init__(self,value  ):  
+  self.value=value  
 
-    
-    total = 0
-
-    
-    max_price = 0
-    for price in prices:
-        if price > max_price:
-            max_price = price
-    print("Max price is", max_price)
-
-main()
+ def display(self): 
+  print("Value is",self.value,"the legnth check with this expmple to chec pep and pylint ") 
+def unused_function():  
+    pass

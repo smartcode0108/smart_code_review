@@ -1,8 +1,7 @@
 import json
 import requests
 import re
-from fnmatch import fnmatch
-from config import REVIEW_CONFIG
+from lib.config import REVIEW_CONFIG
 
 class OllamaAPI:
     def __init__(self, model="codellama"):

@@ -1,10 +1,7 @@
 import os
-import json
 import subprocess
-from pathlib import Path
 import requests
 from unidiff import PatchSet
-from stats import ReviewStats
 from github import GitHubAPI
 from ollama import OllamaAPI
 

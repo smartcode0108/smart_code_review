@@ -3,6 +3,7 @@ import requests
 import sys
 import difflib
 
+
 class OllamaAPI:
     def __init__(self, model="codegemma:7b-instruct"):
         self.base_url = "http://127.0.0.1:11434"
@@ -28,11 +29,7 @@ class OllamaAPI:
                 """
         response = requests.post(
             f"{self.base_url}/api/generate",
-            json={
-                "model": self.model,
-                "prompt": prompt,
-                "stream": False
-            }
+            json={"model": self.model, "prompt": prompt, "stream": False},
         )
         response.raise_for_status()
         result = response.json()
@@ -57,7 +54,7 @@ class OllamaAPI:
         diff = difflib.unified_diff(
             previous_source.splitlines(keepends=True),
             current_source.splitlines(keepends=True),
-            lineterm=""
+            lineterm="",
         )
         changed_lines = set()
         for line in diff:
@@ -74,7 +71,10 @@ class OllamaAPI:
         offset = 0
 
         for node in ast.walk(tree):
-            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and ast.get_docstring(node) is None:
+            if (
+                isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+                and ast.get_docstring(node) is None
+            ):
                 if not node.body:
                     continue
 
@@ -88,8 +88,12 @@ class OllamaAPI:
                 indent = " " * (node.col_offset + 4)
 
                 # Extract only the function body
-                function_body_lines = current_source.splitlines()[node.lineno:node.end_lineno]
-                function_body = "\n".join(line[len(indent):] for line in function_body_lines[1:])
+                function_body_lines = current_source.splitlines()[
+                    node.lineno : node.end_lineno
+                ]
+                function_body = "\n".join(
+                    line[len(indent) :] for line in function_body_lines[1:]
+                )
 
                 try:
                     print(f"🔍 Generating docstring for: {node.name}")
@@ -106,7 +110,9 @@ class OllamaAPI:
                     # Insert docstring after function definition
                     def_line = node.lineno - 1
                     insert_at = def_line + 1 + offset
-                    new_lines[insert_at:insert_at] = [line + "\n" for line in docstring_lines]
+                    new_lines[insert_at:insert_at] = [
+                        line + "\n" for line in docstring_lines
+                    ]
                     offset += len(docstring_lines)
                 except Exception as e:
                     print(f"❌ Failed for {node.name}: {e}")
@@ -115,6 +121,7 @@ class OllamaAPI:
             file.writelines(new_lines)
 
         print(f"✅ Docstrings added in: {file_path}")
+
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:

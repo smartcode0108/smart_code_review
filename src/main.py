@@ -39,6 +39,18 @@ def find_existing_comment(existing_comments, new_comment):
 
 
 def deduplicate_reviews(reviews):
+    """
+    **Docstring:**
+    
+    Summary:
+    Filters a list of reviews based on uniqueness and proximity.
+    
+    Args:
+        reviews (list): A list of review dictionaries.
+    
+    Returns:
+        list: A filtered list of reviews.
+    """
     seen = set()
     filtered = []
 

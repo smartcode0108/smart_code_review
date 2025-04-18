@@ -46,7 +46,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Fix PEP 8 and format files with Black
+      - name: Fix PEP 8 and pylint format files with Black
         run: |
           echo "Identifying files with changes..."
           git diff --name-only origin/${{ github.base_ref }}...${{ github.head_ref }} -- '*.py' > changed_files.txt
@@ -55,8 +55,9 @@ jobs:
           echo "Applying autopep8 and black to changed files..."
           while IFS= read -r file; do
             echo "Fixing file: $file"
-            autopep8 --in-place --global-config /dev/null --max-line-length 120 "$file"
+            autopep8 --in-place --global-config /dev/null --max-line-length 75 "$file"
             black "$file"
+            autoflake --remove-all-unused-imports --remove-unused-variables --in-place --recursive "$file" 
           done < changed_files.txt
           echo "PEP 8 fixes and formatting applied to changed files."
           rm -f changed_files.txt  # Delete the temporary file
@@ -66,10 +67,17 @@ jobs:
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
           if [ -n "$(git status --porcelain)" ]; then
-            echo "Changes detected. Committing and pushing..."
+            echo "Changes detected. Preparing to commit..."
             git add .
-            git commit -m "Auto-fix PEP 8 issues"
-            git push origin ${{ github.head_ref }}
+            LAST_COMMIT_MESSAGE=$(git log -1 --pretty=%B || echo "")
+            if [[ "$LAST_COMMIT_MESSAGE" == "Auto-fix PEP 8 and pylint issues" ]]; then
+              echo "Amending the last commit..."
+              git commit --amend --no-edit
+            else
+              echo "Creating a new commit..."
+              git commit -m "Auto-fix PEP 8 and pylint issues"
+            fi
+            git push --force-with-lease origin ${{ github.head_ref }}
           else
             echo "No changes to commit. Skipping push."
           fi

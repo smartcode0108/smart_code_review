@@ -151,7 +151,7 @@ def process_chunk(hunk, file, github, ollama):
         for review in reviews:
             if review.get("line") is not None:
                 position = line_to_position.get(review["line"])
-                if position is not None:
+                if position is None:
                     print(
                         f"Skipping comment: no diff position for line {review['line']}"
                     )

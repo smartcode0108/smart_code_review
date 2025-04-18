@@ -22,7 +22,7 @@ Function:
 """
         response = requests.post(
             f"{self.base_url}/api/generate",
-            json={"model": self.model, "prompt": prompt, "stream": False}
+            json={"model": self.model, "prompt": prompt, "stream": False},
         )
         response.raise_for_status()
         response_json = response.json()
@@ -46,7 +46,9 @@ def extract_new_functions(file_path, changed_lines, is_new_file=False):
 
 def is_new_file(file_path):
     try:
-        result = subprocess.check_output(["git", "diff", "--name-status", "origin/master", file_path]).decode("utf-8")
+        result = subprocess.check_output(
+            ["git", "diff", "--name-status", "origin/master", file_path]
+        ).decode("utf-8")
         for line in result.splitlines():
             status, path = line.split("\t")
             if path == file_path and status == "A":
@@ -89,7 +91,9 @@ def main():
         print(f"{file_path} is a new file. Processing all functions.")
         changed_lines = list(range(1, len(open(file_path).readlines()) + 1))
     else:
-        diff_output = subprocess.check_output(["git", "diff", "origin/master", file_path]).decode("utf-8")
+        diff_output = subprocess.check_output(
+            ["git", "diff", "origin/master", file_path]
+        ).decode("utf-8")
         patch = PatchSet(diff_output)
         changed_lines = []
         for hunk in patch[0]:
@@ -138,7 +142,9 @@ def main():
         return
 
     github_api = GitHubAPI(github_token)
-    github_api.genaral_comment_to_pr(repo_owner, repo_name, int(pr_number), comment_body)
+    github_api.genaral_comment_to_pr(
+        repo_owner, repo_name, int(pr_number), comment_body
+    )
 
 
 if __name__ == "__main__":

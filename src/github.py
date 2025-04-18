@@ -43,7 +43,9 @@ class GitHubAPI:
         path = f"/repos/{owner}/{repo}/pulls/{pr_number}"
         return self.make_request("GET", path)
 
-    def create_review_comment(self, owner, repo, pr_number, commit_id, path, position, body):
+    def create_review_comment(
+        self, owner, repo, pr_number, commit_id, path, position, body
+    ):
         try:
             if not path or position is None:
                 raise ValueError("Invalid path or position for inline comment.")
@@ -66,6 +68,7 @@ class GitHubAPI:
         except Exception as error:
             print(f"Error creating review comment: {error}")
             raise error
+
     def post_comment(self, owner, repo, pr_number, body):
         path = f"/repos/{owner}/{repo}/issues/{pr_number}/comments"
         return self.make_request("POST", path, {"body": body})
@@ -94,7 +97,7 @@ class GitHubAPI:
     def get_existing_comments(self, owner, repo, pr_number):
         path = f"/repos/{owner}/{repo}/pulls/{pr_number}/comments"
         return self.make_request("GET", path)
-    
+
     def genaral_comment_to_pr(self, repo_owner, repo_name, pr_number, comment_body):
         """
         Posts a comment on the specified pull request.
@@ -117,6 +120,8 @@ class GitHubAPI:
 
         response = requests.post(url, headers=self.headers, json=data)
         if response.status_code != 201:
-            raise Exception(f"Failed to post comment: {response.status_code} - {response.text}")
+            raise Exception(
+                f"Failed to post comment: {response.status_code} - {response.text}"
+            )
         print("Comment posted successfully.")
         return response.json()

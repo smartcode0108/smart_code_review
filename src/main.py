@@ -15,6 +15,16 @@ GITHUB_SHA = os.getenv("GITHUB_SHA")
 
 
 def find_existing_comment(existing_comments, new_comment):
+    """
+    Summary line.
+    
+    Args:
+        existing (dict): description.
+        new_comment (dict): description.
+    
+    Returns:
+        bool: True if the comments are duplicates, False otherwise.
+    """
     for existing in existing_comments:
         if (
             existing["path"] == new_comment["path"]
@@ -26,6 +36,17 @@ def find_existing_comment(existing_comments, new_comment):
 
 
 def deduplicate_reviews(reviews):
+    """
+    **Docstring:**
+    
+    Filters and removes duplicate reviews based on message, type, and severity, keeping only the latest review for each unique combination.
+    
+    Args:
+        reviews (list): A list of dictionaries, each representing a review with keys "message", "type", "severity", and "line".
+    
+    Returns:
+        list: A list of dictionaries representing the filtered reviews.
+    """
     seen = set()
     filtered = []
 
@@ -43,6 +64,16 @@ def deduplicate_reviews(reviews):
 
 
 def get_changed_lines(hunk):
+    """
+    Summary:
+    Extracts added and context lines from a hunk object.
+    
+    Args:
+        hunk (Hunk): The hunk object containing the lines.
+    
+    Returns:
+        dict: A dictionary containing the context and added lines.
+    """
     changed_lines = {}
     added_lines = set()
 
@@ -62,6 +93,16 @@ def get_changed_lines(hunk):
 
 
 def process_chunk(hunk, file, github, ollama):
+    """
+    Summary:
+    Generates automated code reviews for pull requests using Ollama's code analysis capabilities.
+    
+    Args:
+        hunk (dict): Git diff hunk containing code changes.
+    
+    Returns:
+        None.
+    """
     try:
         changed_lines = get_changed_lines(hunk)
         if not changed_lines:
@@ -134,6 +175,16 @@ def process_chunk(hunk, file, github, ollama):
 
 
 def main():
+    """
+    Summary line.
+    
+    Args:
+        github (GitHubAPI): GitHub API object.
+        ollama (OllamaAPI): Ollama API object.
+    
+    Returns:
+        None.
+    """
     try:
         github = GitHubAPI(GITHUB_TOKEN)
         ollama = OllamaAPI()

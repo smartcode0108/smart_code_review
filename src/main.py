@@ -13,45 +13,16 @@ GITHUB_REPOSITORY_OWNER = os.getenv("GITHUB_REPOSITORY_OWNER")
 PR_NUMBER = os.getenv("PR_NUMBER")
 GITHUB_SHA = os.getenv("GITHUB_SHA")
 
-existing_comments_cache = None
-
-
-def get_existing_comments(owner, repo, pr_number):
-    global existing_comments_cache
-    if existing_comments_cache is None:
-        url = f"https://api.github.com/repos/{owner}/{repo}/pulls/{pr_number}/comments"
-        headers = {"Authorization": f"token {GITHUB_TOKEN}"}
-        response = requests.get(url, headers=headers)
-        response.raise_for_status()
-        existing_comments_cache = response.json()
-    return existing_comments_cache
-
 
 def find_existing_comment(existing_comments, new_comment):
     for existing in existing_comments:
         if (
             existing["path"] == new_comment["path"]
-            and existing["line"] == new_comment["line"]
-            and new_comment["message"][:50] in existing["body"]
+            and existing.get("line") == new_comment["line"]
+            and new_comment["body"].strip() == existing.get("body", "").strip()
         ):
             return True
     return False
-
-
-def merge_comments(comments):
-    merged_comments = {}
-    for comment in comments:
-        key = f"{comment['path']}:{comment['line']}"
-        if key not in merged_comments:
-            merged_comments[key] = {
-                **comment,
-                "body": f":thought_balloon: **{comment['type'].upper()}** ({comment['severity']})\n\n{comment['message']}",
-            }
-        else:
-            merged_comments[key][
-                "body"
-            ] += f"\n\n:thought_balloon: **{comment['type'].upper()}** ({comment['severity']})\n\n{comment['message']}"
-    return list(merged_comments.values())
 
 
 def get_changed_lines(hunk):
@@ -95,15 +66,25 @@ def process_chunk(hunk, file, github, ollama):
         comments_to_post = []
         general_comments = []
 
+        existing_comments = github.get_existing_comments(
+            GITHUB_REPOSITORY_OWNER, GITHUB_REPOSITORY.split("/")[1], PR_NUMBER)
+
         for review in reviews:
             if review.get("line") is not None:
-                comment = {
+                new_comment = {
                     "path": file.path,
                     "line": review["line"],
-                    "side": "RIGHT",
                     "body": f"[{review['type'].upper()} - {review['severity'].capitalize()}] {review['message']}",
                 }
-                comments_to_post.append(comment)
+
+                if not find_existing_comment(existing_comments, new_comment):
+                    comments_to_post = {
+                        **new_comment,
+                        "side": "RIGHT"
+                    }
+                    comments_to_post.append(comments_to_post)
+                else:
+                    print(f"Skipping duplicate comment on {file.path}:{review['line']}")
             else:
                 general_comments.append(review["message"])
 
@@ -115,7 +96,7 @@ def process_chunk(hunk, file, github, ollama):
                 comments_to_post,
                 body="Automated review by Ollama Code Review Bot",
             )
-            print(f"Posted review with inline commenrs")
+            print(f"Posted review with inline comments")
 
         if general_comments:
             body = "\n\n".join(general_comments)

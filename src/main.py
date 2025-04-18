@@ -15,6 +15,19 @@ GITHUB_SHA = os.getenv("GITHUB_SHA")
 
 
 def find_existing_comment(existing_comments, new_comment):
+    """
+    **Docstring:**
+    
+    Summary:
+    Determines if two comments are equal based on path, line number, and comment body.
+    
+    Args:
+        existing (dict): Existing comment.
+        new_comment (dict): New comment.
+    
+    Returns:
+        bool: True if the comments are equal, False otherwise.
+    """
     for existing in existing_comments:
         if (
             existing["path"] == new_comment["path"]
@@ -26,6 +39,15 @@ def find_existing_comment(existing_comments, new_comment):
 
 
 def get_changed_lines(hunk):
+    """
+    Summary line.
+    
+    Args:
+        line (HunkLine): the line object.
+    
+    Returns:
+        dict: context dictionary containing line content, type, and position.
+    """
     changed_lines = {}
     added_lines = set()
 
@@ -45,6 +67,19 @@ def get_changed_lines(hunk):
 
 
 def process_chunk(hunk, file, github, ollama):
+    """
+    ## Summary
+    
+    Generates reviews for code changes in a GitHub pull request.
+    
+    ## Args:
+    
+    - `hunk` (dict): A dictionary containing information about the code changes in the pull request.
+    
+    ## Returns:
+    
+    - None
+    """
     try:
         changed_lines = get_changed_lines(hunk)
         if not changed_lines:
@@ -115,6 +150,15 @@ def process_chunk(hunk, file, github, ollama):
 
 
 def main():
+    """
+    Summary line.
+    
+    Args:
+        diff_output (str): Output of the `git diff` command.
+    
+    Returns:
+        None
+    """
     try:
         github = GitHubAPI(GITHUB_TOKEN)
         ollama = OllamaAPI()

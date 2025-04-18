@@ -79,20 +79,25 @@ def get_changed_lines(hunk):
     """
     changed_lines = {}
     added_lines = set()
+    line_to_position = {}
 
+    position = 0
     for line in hunk:
+        position += 1
+        if line.target_line_no:
+            line_to_position[line.target_line_no] = position
+
         if line.is_added or line.is_context:
             line_num = line.target_line_no
             if line_num:
                 changed_lines[line_num] = {
                     "content": line.value,
                     "type": "add" if line.is_added else "normal",
-                    "position": line_num,
                 }
                 if line.is_added:
                     added_lines.add(line_num)
 
-    return {"context": changed_lines, "added_lines": list(added_lines)}
+    return {"context": changed_lines, "added_lines": list(added_lines), "line_to_position": line_to_position}
 
 
 def process_chunk(hunk, file, github, ollama):
@@ -137,12 +142,19 @@ def process_chunk(hunk, file, github, ollama):
             GITHUB_REPOSITORY_OWNER, GITHUB_REPOSITORY.split("/")[1], PR_NUMBER
         )
 
+        line_to_position = changed_lines["line_to_position"]
+
         for review in reviews:
             if review.get("line") is not None:
+                position = line_to_position.get(review["line"])
+                if position is not None:
+                    print(f"Skipping comment: no diff position for line {review['line']}")
+                    continue
                 new_comment = {
                     "path": file.path,
                     "line": review["line"],
                     "side": "RIGHT",
+                    "position": position,
                     "body": f"[{review['type'].upper()} - {review['severity'].capitalize()}] {review['message']}",
                 }
 

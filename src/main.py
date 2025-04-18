@@ -37,6 +37,22 @@ def find_existing_comment(existing_comments, new_comment):
             return True
     return False
 
+def deduplicate_reviews(reviews):
+    seen = set()
+    filtered = []
+
+    for review in sorted(reviews, key=lambda r: r["line"]):
+        key = (review["message"].strip(), review["type"], review["severity"])
+        if any(
+            abs(review["line"] - other_line) <= 1 and key == other_key
+            for other_key, other_line in seen
+        ):
+            continue
+        filtered.append(review)
+        seen.add((key, review["line"]))
+
+    return filtered
+
 
 def get_changed_lines(hunk):
     """
@@ -98,6 +114,9 @@ def process_chunk(hunk, file, github, ollama):
             changed_lines=changed_lines["added_lines"],
         )
         print(f"Reviews returned by Ollama: {reviews}")
+
+        reviews = deduplicate_reviews(reviews)
+        print(f"Deduplicated reviews: {reviews}")
         comments_to_post = []
         general_comments = []
 

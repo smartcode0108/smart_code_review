@@ -6,6 +6,7 @@ import re
 # Import config
 from config import REVIEW_CONFIG
 
+
 class OllamaAPI:
     def __init__(self, model="codellama"):
         self.base_url = "http://127.0.0.1:11434"
@@ -56,20 +57,21 @@ class OllamaAPI:
         # Fixed prompt to reduce echoing
         prompt_template = REVIEW_CONFIG["reviewPrompt"]
         prompt = prompt_template.format(
-            filename=filename,
-            changed_lines=json.dumps(changed_lines),
-            content=content
-            )
+            filename=filename, changed_lines=json.dumps(changed_lines), content=content
+        )
         print("Prompt sent to ollama:\n", prompt)
 
-        response = self.make_request("/api/generate", {
-            "model": self.model,
-            "prompt": prompt,
-            "stream": True,
-            "temperature": 0.1,
-            "top_k": 10,
-            "top_p": 0.9
-        })
+        response = self.make_request(
+            "/api/generate",
+            {
+                "model": self.model,
+                "prompt": prompt,
+                "stream": True,
+                "temperature": 0.1,
+                "top_k": 10,
+                "top_p": 0.9,
+            },
+        )
 
         content_type = response.headers.get("Content-Type", "")
         if "application/json" in content_type:
@@ -86,7 +88,6 @@ class OllamaAPI:
             except json.JSONDecodeError:
                 print("Failed to parse streamed response")
                 parsed_reviews = []
-
 
         print(f"Parsed reviews: {parsed_reviews}")
 

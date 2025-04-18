@@ -1,4 +1,3 @@
-import os 
 from datetime import datetime
 
 
@@ -9,7 +8,7 @@ class Customer:
         self.email = email
         self.orders = []
 
-    def add_order(self, order  ):
+    def add_order(self, order):
         self.orders.append(order)
 
     def total_spent(self):
@@ -20,27 +19,27 @@ class Customer:
 
 
 class Order:
-    def __init__(self,order_id: int, customer_id: int, items: list, status="Pending"):
+    def __init__(self, order_id: int, customer_id: int, items: list, status="Pending"):
         self.order_id = order_id
         self.customer_id = customer_id
         self.items = items  # List of (item_name, quantity, price)
         self.status = status
         self.created_at = datetime.now()
 
-    def total_price(self    ):
+    def total_price(self):
         return sum(qty * price for _, qty, price in self.items)
 
-    def is_delivered(self  ):
+    def is_delivered(self):
         return self.status.lower() == "delivered"
 
-    def mark_delivered(  self):
+    def mark_delivered(self):
         self.status = "Delivered"
 
-    def __repr__(  self):
+    def __repr__(self):
         return f"Order({self.order_id}, total=${self.total_price():.2f})"
 
 
-def find_high_value_customers(customers,threshold):
+def find_high_value_customers(customers, threshold):
     return [customer for customer in customers if customer.total_spent() > threshold]
 
 

@@ -29,9 +29,9 @@ Focus on:
 Return JSON output like this:
 [
   {{
-    "line": 42,
-    "type": "security",
-    "severity": "high",
+    "line": (line_number_as_int),
+    "type": (type_as_string): one of ["security", "perfomance", "design", "readability", "bug", "suggestion"],
+    "severity": (severity_as_string): "low", "medium", or "high",
     "message": "<specific_issue_and_recommendation>"
   }}
 ]

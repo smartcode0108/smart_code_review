@@ -151,6 +151,8 @@ def process_chunk(hunk, file, github, ollama):
         for review in reviews:
             if review.get("line") is not None:
                 position = line_to_position.get(review["line"])
+                if position is None and (review["line"] - 1) in line_to_position:
+                    position = line_to_position[review["line"] - 1]
                 if position is None:
                     print(
                         f"Skipping comment: no diff position for line {review['line']}"
@@ -172,14 +174,17 @@ def process_chunk(hunk, file, github, ollama):
                 general_comments.append(review["message"])
 
         if comments_to_post:
-            github.create_review(
-                GITHUB_REPOSITORY_OWNER,
-                GITHUB_REPOSITORY.split("/")[1],
-                PR_NUMBER,
-                comments_to_post,
-                body="Automated review by Ollama Code Review Bot",
-            )
-            print(f"Posted review with inline comments")
+            for comment in comments_to_post:
+                github.create_review_comment(
+                    GITHUB_REPOSITORY_OWNER,
+                    GITHUB_REPOSITORY.split("/")[1],
+                    PR_NUMBER,
+                    GITHUB_SHA,
+                    comment["path"],
+                    comment["position"],
+                    comment["body"],
+                    )
+            print(f"Posted inline comments via create_review_comment")
 
         if general_comments:
             body = "\n\n".join(general_comments)

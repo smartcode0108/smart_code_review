@@ -183,7 +183,7 @@ def process_chunk(hunk, file, github, ollama):
                     comment["path"],
                     comment["position"],
                     comment["body"],
-                    )
+                )
             print(f"Posted inline comments via create_review_comment")
 
         if general_comments:

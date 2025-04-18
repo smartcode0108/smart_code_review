@@ -37,6 +37,7 @@ def find_existing_comment(existing_comments, new_comment):
             return True
     return False
 
+
 def deduplicate_reviews(reviews):
     seen = set()
     filtered = []

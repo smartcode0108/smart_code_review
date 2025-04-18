@@ -110,12 +110,12 @@ def process_chunk(hunk, file, github, ollama):
                 new_comment = {
                     "path": file.path,
                     "line": review["line"],
+                    "side": "RIGHT",
                     "body": f"[{review['type'].upper()} - {review['severity'].capitalize()}] {review['message']}",
                 }
 
                 if not find_existing_comment(existing_comments, new_comment):
-                    comments_to_post = {**new_comment, "side": "RIGHT"}
-                    comments_to_post.append(comments_to_post)
+                    comments_to_post.append(new_comment)
                 else:
                     print(f"Skipping duplicate comment on {file.path}:{review['line']}")
             else:

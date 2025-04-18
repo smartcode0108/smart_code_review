@@ -38,5 +38,5 @@ Return JSON output like this:
 
 Code:
 {content}
-"""
+""",
 }

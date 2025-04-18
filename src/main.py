@@ -14,7 +14,6 @@ PR_NUMBER = os.getenv("PR_NUMBER")
 GITHUB_SHA = os.getenv("GITHUB_SHA")
 
 
-
 def find_existing_comment(existing_comments, new_comment):
     for existing in existing_comments:
         if (
@@ -24,6 +23,7 @@ def find_existing_comment(existing_comments, new_comment):
         ):
             return True
     return False
+
 
 def deduplicate_reviews(reviews):
     seen = set()

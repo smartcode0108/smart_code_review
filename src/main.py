@@ -67,7 +67,8 @@ def process_chunk(hunk, file, github, ollama):
         general_comments = []
 
         existing_comments = github.get_existing_comments(
-            GITHUB_REPOSITORY_OWNER, GITHUB_REPOSITORY.split("/")[1], PR_NUMBER)
+            GITHUB_REPOSITORY_OWNER, GITHUB_REPOSITORY.split("/")[1], PR_NUMBER
+        )
 
         for review in reviews:
             if review.get("line") is not None:
@@ -78,10 +79,7 @@ def process_chunk(hunk, file, github, ollama):
                 }
 
                 if not find_existing_comment(existing_comments, new_comment):
-                    comments_to_post = {
-                        **new_comment,
-                        "side": "RIGHT"
-                    }
+                    comments_to_post = {**new_comment, "side": "RIGHT"}
                     comments_to_post.append(comments_to_post)
                 else:
                     print(f"Skipping duplicate comment on {file.path}:{review['line']}")

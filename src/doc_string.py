@@ -8,10 +8,10 @@ class OllamaAPI:
     def __init__(self, model="codegemma:7b-instruct"):
         """
         Summary: Initializes the model for the user.
-        
+
         Args:
             model (object): The model object.
-        
+
         Returns:
             None
         """
@@ -20,14 +20,13 @@ class OllamaAPI:
 
     def generate_docstring(self, code_snippet):
         """
-        Calculates the sum of two numbers.
-        
+        Generates a Python docstring for the given function code snippet.
+
         Args:
-            num1 (int): The first number.
-            num2 (int): The second number.
-        
+            code_snippet (str): The source code of the function for which the docstring is to be generated.
+
         Returns:
-            int: The sum of num1 and num2.
+            str: The generated docstring content, formatted as plain text without any Python code or markdown.
         """
         prompt = f"""You are a docstring generator.
                 Your job is to generate ONLY the Python docstring content for the function below. 
@@ -60,11 +59,11 @@ class OllamaAPI:
         """
         Summary:
         Generates docstrings for functions in a Python file based on the changes between the current and previous versions of the file.
-        
+
         Args:
             file_path (str): The path to the Python file.
             previous_file_path (str, optional): The path to the previous version of the file.
-        
+
         Returns:
             None
         """

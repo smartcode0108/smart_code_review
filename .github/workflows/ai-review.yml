@@ -54,6 +54,10 @@ jobs:
           
           echo "Applying autopep8 and black to changed files..."
           while IFS= read -r file; do
+            if [ ! -f "$file" ]; then
+              echo "Skipping file $file as it does not exist."
+              continue
+            fi
             echo "Fixing file: $file"
             autopep8 --in-place --global-config /dev/null --max-line-length 75 "$file"
             black "$file"

@@ -1,10 +1,7 @@
 import os
-import json
 import subprocess
-from pathlib import Path
 import requests
 from unidiff import PatchSet
-from stats import ReviewStats
 from github import GitHubAPI
 from ollama import OllamaAPI
 
@@ -18,6 +15,7 @@ GITHUB_SHA = os.getenv("GITHUB_SHA")
 
 existing_comments_cache = None
 
+
 def get_existing_comments(owner, repo, pr_number):
     global existing_comments_cache
     if existing_comments_cache is None:
@@ -27,6 +25,7 @@ def get_existing_comments(owner, repo, pr_number):
         response.raise_for_status()
         existing_comments_cache = response.json()
     return existing_comments_cache
+
 
 def find_existing_comment(existing_comments, new_comment):
     for existing in existing_comments:
@@ -38,6 +37,7 @@ def find_existing_comment(existing_comments, new_comment):
             return True
     return False
 
+
 def merge_comments(comments):
     merged_comments = {}
     for comment in comments:
@@ -48,8 +48,11 @@ def merge_comments(comments):
                 "body": f":thought_balloon: **{comment['type'].upper()}** ({comment['severity']})\n\n{comment['message']}",
             }
         else:
-            merged_comments[key]["body"] += f"\n\n:thought_balloon: **{comment['type'].upper()}** ({comment['severity']})\n\n{comment['message']}"
+            merged_comments[key][
+                "body"
+            ] += f"\n\n:thought_balloon: **{comment['type'].upper()}** ({comment['severity']})\n\n{comment['message']}"
     return list(merged_comments.values())
+
 
 def get_changed_lines(hunk):
     changed_lines = {}
@@ -69,6 +72,7 @@ def get_changed_lines(hunk):
 
     return {"context": changed_lines, "added_lines": list(added_lines)}
 
+
 def process_chunk(hunk, file, github, ollama):
     try:
         changed_lines = get_changed_lines(hunk)
@@ -82,7 +86,11 @@ def process_chunk(hunk, file, github, ollama):
         print(f"Reviewing {file.path} with context:\n{content_with_lines}")
         print("changed_lines", changed_lines["added_lines"])
 
-        reviews = ollama.review_code(content=content_with_lines, filename=file.path, changed_lines=changed_lines["added_lines"])
+        reviews = ollama.review_code(
+            content=content_with_lines,
+            filename=file.path,
+            changed_lines=changed_lines["added_lines"],
+        )
         print(f"Reviews returned by Ollama: {reviews}")
         comments_to_post = []
         general_comments = []
@@ -126,12 +134,15 @@ def process_chunk(hunk, file, github, ollama):
         print(f"An error occurred: {err}")
         return
 
+
 def main():
     try:
         github = GitHubAPI(GITHUB_TOKEN)
         ollama = OllamaAPI()
 
-        diff_output = subprocess.check_output(["git", "diff", BASE_BRANCH, "HEAD"]).decode("utf-8")
+        diff_output = subprocess.check_output(
+            ["git", "diff", BASE_BRANCH, "HEAD"]
+        ).decode("utf-8")
         files = PatchSet(diff_output)
 
         print(f"Found {len(files)} changed files")
@@ -143,6 +154,7 @@ def main():
     except Exception as e:
         print(f"Error in code review process: {e}")
         exit(1)
+
 
 if __name__ == "__main__":
     main()

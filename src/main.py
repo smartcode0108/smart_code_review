@@ -13,48 +13,67 @@ GITHUB_REPOSITORY_OWNER = os.getenv("GITHUB_REPOSITORY_OWNER")
 PR_NUMBER = os.getenv("PR_NUMBER")
 GITHUB_SHA = os.getenv("GITHUB_SHA")
 
-existing_comments_cache = None
-
-
-def get_existing_comments(owner, repo, pr_number):
-    global existing_comments_cache
-    if existing_comments_cache is None:
-        url = f"https://api.github.com/repos/{owner}/{repo}/pulls/{pr_number}/comments"
-        headers = {"Authorization": f"token {GITHUB_TOKEN}"}
-        response = requests.get(url, headers=headers)
-        response.raise_for_status()
-        existing_comments_cache = response.json()
-    return existing_comments_cache
-
 
 def find_existing_comment(existing_comments, new_comment):
+    """
+    Summary line.
+    
+    Args:
+        existing (dict): description.
+        new_comment (dict): description.
+    
+    Returns:
+        bool: True if the comments are duplicates, False otherwise.
+    """
     for existing in existing_comments:
         if (
             existing["path"] == new_comment["path"]
-            and existing["line"] == new_comment["line"]
-            and new_comment["message"][:50] in existing["body"]
+            and existing.get("line") == new_comment["line"]
+            and new_comment["body"].strip() == existing.get("body", "").strip()
         ):
             return True
     return False
 
 
-def merge_comments(comments):
-    merged_comments = {}
-    for comment in comments:
-        key = f"{comment['path']}:{comment['line']}"
-        if key not in merged_comments:
-            merged_comments[key] = {
-                **comment,
-                "body": f":thought_balloon: **{comment['type'].upper()}** ({comment['severity']})\n\n{comment['message']}",
-            }
-        else:
-            merged_comments[key][
-                "body"
-            ] += f"\n\n:thought_balloon: **{comment['type'].upper()}** ({comment['severity']})\n\n{comment['message']}"
-    return list(merged_comments.values())
+def deduplicate_reviews(reviews):
+    """
+    **Docstring:**
+    
+    Filters and removes duplicate reviews based on message, type, and severity, keeping only the latest review for each unique combination.
+    
+    Args:
+        reviews (list): A list of dictionaries, each representing a review with keys "message", "type", "severity", and "line".
+    
+    Returns:
+        list: A list of dictionaries representing the filtered reviews.
+    """
+    seen = set()
+    filtered = []
+
+    for review in sorted(reviews, key=lambda r: r["line"]):
+        key = (review["message"].strip(), review["type"], review["severity"])
+        if any(
+            abs(review["line"] - other_line) <= 1 and key == other_key
+            for other_key, other_line in seen
+        ):
+            continue
+        filtered.append(review)
+        seen.add((key, review["line"]))
+
+    return filtered
 
 
 def get_changed_lines(hunk):
+    """
+    Summary:
+    Extracts added and context lines from a hunk object.
+    
+    Args:
+        hunk (Hunk): The hunk object containing the lines.
+    
+    Returns:
+        dict: A dictionary containing the context and added lines.
+    """
     changed_lines = {}
     added_lines = set()
 
@@ -74,6 +93,16 @@ def get_changed_lines(hunk):
 
 
 def process_chunk(hunk, file, github, ollama):
+    """
+    Summary:
+    Generates automated code reviews for pull requests using Ollama's code analysis capabilities.
+    
+    Args:
+        hunk (dict): Git diff hunk containing code changes.
+    
+    Returns:
+        None.
+    """
     try:
         changed_lines = get_changed_lines(hunk)
         if not changed_lines:
@@ -92,18 +121,28 @@ def process_chunk(hunk, file, github, ollama):
             changed_lines=changed_lines["added_lines"],
         )
         print(f"Reviews returned by Ollama: {reviews}")
+        reviews = deduplicate_reviews(reviews)
+        print(f"Deduplicated reviews: {reviews}")
         comments_to_post = []
         general_comments = []
+
+        existing_comments = github.get_existing_comments(
+            GITHUB_REPOSITORY_OWNER, GITHUB_REPOSITORY.split("/")[1], PR_NUMBER
+        )
 
         for review in reviews:
             if review.get("line") is not None:
                 comment = {
                     "path": file.path,
-                    "line": review["line"],
+                    "line": review["line"] + 1,
                     "side": "RIGHT",
                     "body": f"[{review['type'].upper()} - {review['severity'].capitalize()}] {review['message']}",
                 }
-                comments_to_post.append(comment)
+
+                if not find_existing_comment(existing_comments, comment):
+                    comments_to_post.append(comment)
+                else:
+                    print(f"Skipping duplicate comment on {file.path}:{review['line']}")
             else:
                 general_comments.append(review["message"])
 
@@ -136,6 +175,16 @@ def process_chunk(hunk, file, github, ollama):
 
 
 def main():
+    """
+    Summary line.
+    
+    Args:
+        github (GitHubAPI): GitHub API object.
+        ollama (OllamaAPI): Ollama API object.
+    
+    Returns:
+        None.
+    """
     try:
         github = GitHubAPI(GITHUB_TOKEN)
         ollama = OllamaAPI()

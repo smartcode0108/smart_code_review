@@ -41,13 +41,13 @@ def find_existing_comment(existing_comments, new_comment):
 def deduplicate_reviews(reviews):
     """
     **Docstring:**
-    
+
     Summary:
     Filters a list of reviews based on uniqueness and proximity.
-    
+
     Args:
         reviews (list): A list of review dictionaries.
-    
+
     Returns:
         list: A filtered list of reviews.
     """
@@ -97,7 +97,11 @@ def get_changed_lines(hunk):
                 if line.is_added:
                     added_lines.add(line_num)
 
-    return {"context": changed_lines, "added_lines": list(added_lines), "line_to_position": line_to_position}
+    return {
+        "context": changed_lines,
+        "added_lines": list(added_lines),
+        "line_to_position": line_to_position,
+    }
 
 
 def process_chunk(hunk, file, github, ollama):
@@ -148,7 +152,9 @@ def process_chunk(hunk, file, github, ollama):
             if review.get("line") is not None:
                 position = line_to_position.get(review["line"])
                 if position is not None:
-                    print(f"Skipping comment: no diff position for line {review['line']}")
+                    print(
+                        f"Skipping comment: no diff position for line {review['line']}"
+                    )
                     continue
                 new_comment = {
                     "path": file.path,

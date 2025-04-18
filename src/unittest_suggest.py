@@ -32,19 +32,51 @@ Function:
 
 
 def extract_new_functions(file_path, changed_lines, is_new_file=False):
+    """
+    ## Function Docstring
+    
+    
+    Summary:
+       Identifies newly added or modified functions in a source code file.
+    
+    Args:
+       file_path (str): Path to the source code file.
+       is_new_file (bool): Whether the file is newly created.
+       changed_lines (list): List of line numbers that have been modified.
+    
+    Returns:
+       list: List of newly or modified functions in the file.
+    """
     new_funcs = []
     with open(file_path, "r") as f:
         source_code = f.read()
         tree = ast.parse(source_code)
 
     for node in ast.walk(tree):
+        """
+        Summary line.
+        
+        Returns:
+            type: description.
+        """
         if isinstance(node, ast.FunctionDef):
             if is_new_file or node.lineno in changed_lines:
                 new_funcs.append(node)
     return new_funcs
 
-
 def is_new_file(file_path):
+    """
+    **Docstring:**
+    
+    Summary:
+    Checks if a specific file has been added (status 'A') compared to the remote origin/master branch.
+    
+    Args:
+        file_path (str): The path to the file.
+    
+    Returns:
+        bool: True if the file is new, False otherwise.
+    """
     try:
         result = subprocess.check_output(
             ["git", "diff", "--name-status", "origin/master", file_path]
@@ -59,7 +91,15 @@ def is_new_file(file_path):
 
 
 def format_test_comment(file_path, test_suggestions):
-    comment_body = f"### 🧪 Unit Test Suggestions for `{file_path}`\n\n"
+    """
+    Summary line.
+    Args:
+        func_name (str): Name of the function.
+        test_code (str): Test code for the function.
+    Returns:
+        str: HTML comment body with suggestions.
+    """
+    comment_body = f"### Unit Test Suggestions for `{file_path}`\n\n"
     comment_body += "<details><summary>Show Suggestions</summary>\n\n"
 
     for func_name, test_code in test_suggestions.items():
@@ -79,6 +119,15 @@ def format_test_comment(file_path, test_suggestions):
 
 
 def main():
+    """
+    Summary line.
+    
+    Args:
+        file_path (str): description.
+    
+    Returns:
+        None
+    """
     if len(sys.argv) < 2:
         print("Usage: python unittest_suggest.py <file_path>")
         sys.exit(1)

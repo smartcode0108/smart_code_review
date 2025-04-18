@@ -108,6 +108,35 @@ jobs:
           echo "$files" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
 
+      - name: Run Code Review
+        if: github.event_name == 'pull_request' && (github.event.action == 'opened' || github.event.action == 'synchronize')
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_SHA: ${{ github.event.pull_request.head.sha }}
+          FILE_PATTERN: '**/*.{ts,tsx}'
+          LAST_REVIEWED_SHA_FILE: .last_reviewed_sha
+        run: |
+          echo "Starting code review process ..."
+          if [ -f $LAST_REVIEWED_SHA_FILE ]; then
+            LAST_REVIEWED_SHA=$(cat $LAST_REVIEWED_SHA_FILE)
+            if [ $LAST_REVIEWED_SHA != $GITHUB_SHA ]; then
+              # Run code review only for new changes
+              CHANGED_FILES=$(git diff --name-only $LAST_REVIEWED_SHA $GITHUB_SHA)
+              echo "Running code review for new changes: $CHANGED_FILES"
+              python src/main.py $CHANGED_FILES
+            else
+              echo "No new changes, skipping code review..."
+            fi
+          else
+            # Run code review for all files
+            echo "Running code review for all files..."
+            python src/main.py
+          fi
+          echo $GITHUB_SHA > $LAST_REVIEWED_SHA_FILE
+
       - name: Run unittest suggestion script
         env:
           CHANGED_FILES: ${{ env.CHANGED_FILES }}
@@ -138,6 +167,7 @@ jobs:
           if [ -n "$(git status --porcelain)" ]; then
             echo "📦 Docstring changes detected. Preparing to commit..."
             git add .
+            git reset .last_reviewed_sha
             LAST_COMMIT_MESSAGE=$(git log -1 --pretty=%B || echo "")
             if [[ "$LAST_COMMIT_MESSAGE" == "🤖 Auto-generate docstrings using Ollama" ]]; then
               echo "Amending the last commit..."
@@ -153,35 +183,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Run Code Review
-        if: github.event_name == 'pull_request' && (github.event.action == 'opened' || github.event.action == 'synchronize')
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          GITHUB_SHA: ${{ github.event.pull_request.head.sha }}
-          FILE_PATTERN: '**/*.{ts,tsx}'
-          LAST_REVIEWED_SHA_FILE: .last_reviewed_sha
-        run: |
-          echo "Starting code review process ..."
-          if [ -f $LAST_REVIEWED_SHA_FILE ]; then
-            LAST_REVIEWED_SHA=$(cat $LAST_REVIEWED_SHA_FILE)
-            if [ $LAST_REVIEWED_SHA != $GITHUB_SHA ]; then
-              # Run code review only for new changes
-              CHANGED_FILES=$(git diff --name-only $LAST_REVIEWED_SHA $GITHUB_SHA)
-              echo "Running code review for new changes: $CHANGED_FILES"
-              python src/main.py $CHANGED_FILES
-            else
-              echo "No new changes, skipping code review..."
-            fi
-          else
-            # Run code review for all files
-            echo "Running code review for all files..."
-            python src/main.py
-          fi
-          echo $GITHUB_SHA > $LAST_REVIEWED_SHA_FILE
-      
       - name: Send Slack Notification
         if: github.event_name == 'pull_request' && github.event.action == 'opened'
         uses: slackapi/slack-github-action@v1.23.0

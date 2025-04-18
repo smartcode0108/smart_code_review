@@ -1,1 +1,17 @@
-.env
+# Ignore Python bytecode
+__pycache__/
+*.pyc
+
+# Ignore virtual environments
+venv/
+.env/
+
+# Ignore specific files
+secrets.json
+debug.log
+
+# Ignore all .log files
+*.log
+
+# Ignore .last_reviewed_sha
+.last_reviewed_sha

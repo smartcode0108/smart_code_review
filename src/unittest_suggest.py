@@ -10,10 +10,30 @@ from main import get_changed_lines
 
 class OllamaAPI:
     def __init__(self, model="codegemma:7b-instruct"):
+        """
+        **Summary:**
+        Initializes the model for the object.
+        
+        **Args:**
+            model (object): The model to initialize.
+        
+        **Returns:**
+            None
+        """
         self.base_url = "http://127.0.0.1:11434"
         self.model = model
 
     def suggest_unittest(self, code_snippet):
+        """
+        Summary line.
+        
+        Args:
+            prompt (str): Prompt for the API request.
+            stream (bool): Whether to stream the response or not.
+        
+        Returns:
+            str: API response.
+        """
         prompt = f"""Generate a Python unittest (using unittest module) for the following function.
 Just output the test function code only. No explanations or markdown.
 

@@ -35,6 +35,7 @@ jobs:
             sleep 2
           done
           ollama pull codellama || { echo "Failed to pull codellama model"; exit 1; }
+          ollama pull codegemma:7b-instruct || { echo "Failed to pull codegemma model"; exit 1; }
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -45,15 +46,24 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+      
+      - name: Get list of changed Python files
+        id: changed
+        run: |
+          files=$(git diff --name-only origin/${{ github.base_ref }}...HEAD -- '*.py')
+          echo "$files"
+          echo "CHANGED_FILES<<EOF" >> $GITHUB_ENV
+          echo "$files" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
 
       - name: Fix PEP 8 and pylint format files with Black
         run: |
           echo "Identifying files with changes..."
-          git diff --name-only origin/${{ github.base_ref }}...${{ github.head_ref }} -- '*.py' > changed_files.txt
           echo "Files with changes:"
-          
-          echo "Applying autopep8 and black to changed files..."
-          while IFS= read -r file; do
+          echo "$CHANGED_FILES"
+
+          echo "Applying autopep8, black, and autoflake to changed files..."
+          for file in $CHANGED_FILES; do
             if [ ! -f "$file" ]; then
               echo "Skipping file $file as it does not exist."
               continue
@@ -61,10 +71,9 @@ jobs:
             echo "Fixing file: $file"
             autopep8 --in-place --global-config /dev/null --max-line-length 75 "$file"
             black "$file"
-            autoflake --remove-all-unused-imports --remove-unused-variables --in-place --recursive "$file" 
-          done < changed_files.txt
+            autoflake --remove-all-unused-imports --remove-unused-variables --in-place "$file"
+          done
           echo "PEP 8 fixes and formatting applied to changed files."
-          rm -f changed_files.txt  # Delete the temporary file
 
       - name: Commit and push changes
         run: |
@@ -84,6 +93,37 @@ jobs:
             git push --force-with-lease origin ${{ github.head_ref }}
           else
             echo "No changes to commit. Skipping push."
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Generate docstrings using Ollama
+        run: |
+          for file in $CHANGED_FILES; do
+            if [[ "$file" == *.py ]]; then
+              echo "Running docstring generator on $file"
+              python src/doc_string.py "$file"
+            fi
+          done
+      
+      - name: Commit and push docstring changes
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "📦 Docstring changes detected. Preparing to commit..."
+            git add .
+            LAST_COMMIT_MESSAGE=$(git log -1 --pretty=%B || echo "")
+            if [[ "$LAST_COMMIT_MESSAGE" == "🤖 Auto-generate docstrings using Ollama" ]]; then
+              echo "Amending the last commit..."
+              git commit --amend --no-edit
+            else
+              echo "Creating a new commit..."
+              git commit -m "🤖 Auto-generate docstrings using Ollama"
+            fi
+            git push --force-with-lease origin ${{ github.head_ref }}
+          else
+            echo "✅ No docstring changes to commit."
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -116,7 +156,7 @@ jobs:
             python src/main.py
           fi
           echo $GITHUB_SHA > $LAST_REVIEWED_SHA_FILE
-
+      
       - name: Send Slack Notification
         if: github.event_name == 'pull_request' && github.event.action == 'opened'
         uses: slackapi/slack-github-action@v1.23.0
@@ -147,8 +187,6 @@ jobs:
             }
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_TOKEN }}
-
-
 
       - name: Cleanup
         if: always()

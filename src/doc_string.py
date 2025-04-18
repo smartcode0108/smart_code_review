@@ -6,10 +6,29 @@ import difflib
 
 class OllamaAPI:
     def __init__(self, model="codegemma:7b-instruct"):
+        """
+        Summary: Initializes the model for the user.
+        
+        Args:
+            model (object): The model object.
+        
+        Returns:
+            None
+        """
         self.base_url = "http://127.0.0.1:11434"
         self.model = model
 
     def generate_docstring(self, code_snippet):
+        """
+        Calculates the sum of two numbers.
+        
+        Args:
+            num1 (int): The first number.
+            num2 (int): The second number.
+        
+        Returns:
+            int: The sum of num1 and num2.
+        """
         prompt = f"""You are a docstring generator.
                 Your job is to generate ONLY the Python docstring content for the function below. 
                 DO NOT include the function definition or any Python code in the output.
@@ -38,6 +57,17 @@ class OllamaAPI:
         return docstring
 
     def add_docstrings_to_file(self, file_path, previous_file_path=None):
+        """
+        Summary:
+        Generates docstrings for functions in a Python file based on the changes between the current and previous versions of the file.
+        
+        Args:
+            file_path (str): The path to the Python file.
+            previous_file_path (str, optional): The path to the previous version of the file.
+        
+        Returns:
+            None
+        """
         print(f"📝 Running docstring generator on {file_path}")
 
         with open(file_path, "r") as file:

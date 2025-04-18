@@ -5,16 +5,16 @@ class GitHubAPI:
     def __init__(self, token):
         """
         **Docstring:**
-        
-        
+
+
         # Get GitHub repository information
         def get_repo_info(self):
             \"\"\"
             Gets GitHub repository information.
-        
+
             Args:
                 self: The object instance.
-        
+
             Returns:
                 dict: GitHub repository information.
         """
@@ -29,18 +29,18 @@ class GitHubAPI:
     def make_request(self, method, path, data=None, additional_headers=None):
         """
         ## Summary
-        
+
         Sends a request to the GitHub API using the specified HTTP method.
-        
+
         ## Args:
-        
+
         - `method` (str): HTTP method to use (e.g., "GET", "POST", "PATCH").
         - `url` (str): GitHub API endpoint.
         - `additional_headers` (dict): Additional headers to include in the request.
         - `data` (dict): Data to send in the request body (only used for POST, PATCH methods).
-        
+
         ## Returns:
-        
+
         - dict: Parsed JSON response if successful.
         - str: Text response if successful (if unable to parse JSON).
         - Exception: In case of request errors or GitHub API errors.
@@ -75,26 +75,28 @@ class GitHubAPI:
     def get_pull_request(self, owner, repo, pr_number):
         """
         ## GET Request Function
-        
+
         Returns the result of a GET request to the specified path.
-        
+
         Args:
             path (str): The path to send the request to.
-        
+
         Returns:
             dict: The JSON response from the server.
         """
         path = f"/repos/{owner}/{repo}/pulls/{pr_number}"
         return self.make_request("GET", path)
 
-    def create_review_comment(self, owner, repo, pr_number, commit_id, path, position, body):
+    def create_review_comment(
+        self, owner, repo, pr_number, commit_id, path, position, body
+    ):
         """
         Summary line.
-        
+
         Args:
             path (str): Path to the file for the inline comment.
             position (int): Position within the file for the inline comment.
-        
+
         Returns:
             dict or None: Response object or None if an error occurred.
         """
@@ -124,16 +126,16 @@ class GitHubAPI:
     def post_comment(self, owner, repo, pr_number, body):
         """
         ## Summary
-        
+
         Send a POST request to the specified path with the given body.
-        
+
         ## Args
-        
+
         - path (str): The path to send the request to.
         - body (dict): The body of the request.
-        
+
         ## Returns
-        
+
         - dict: The response from the server.
         """
         path = f"/repos/{owner}/{repo}/issues/{pr_number}/comments"
@@ -142,12 +144,12 @@ class GitHubAPI:
     def create_review(self, owner, repo, pr_number, comments, body):
         """
         Summary line.
-        
+
         Args:
             path (str): path.
             body (str): body.
             comments (str): comments.
-        
+
         Returns:
             str: request.
         """
@@ -165,10 +167,10 @@ class GitHubAPI:
     def get_pull_request_diff(self, owner, repo, pr_number):
         """
         Summary: Makes a GET request to the GitHub API endpoint.
-        
+
         Args:
             path (str): The path to the GitHub API endpoint.
-        
+
         Returns:
             dict: The response from the GitHub API.
         """
@@ -179,11 +181,11 @@ class GitHubAPI:
     def update_review_comment(self, owner, repo, comment_id, body):
         """
         ## Summary: Send a PATCH request to the specified path with the given body.
-        
+
         ## Args:
             path (str): The path to send the request to.
             body (dict): The body of the request.
-        
+
         ## Returns:
             dict: The response from the server.
         """
@@ -193,10 +195,10 @@ class GitHubAPI:
     def get_existing_comments(self, owner, repo, pr_number):
         """
         ## Summary line.
-        
+
         ## Args:
             path (str): The API endpoint to request.
-        
+
         ## Returns:
             Response object: The API response object.
         """

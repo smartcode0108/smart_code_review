@@ -34,6 +34,7 @@ jobs:
             echo "Waiting for Ollama server to start..."
             sleep 2
           done
+          ollama pull codegemma:7b-instruct || { echo "Failed to pull codegemma model"; exit 1; }
           ollama pull codellama || { echo "Failed to pull codellama model"; exit 1; }
 
       - name: Set up Python
@@ -83,6 +84,30 @@ jobs:
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Get list of changed Python files
+        id: changed-python-files
+        run: |
+          echo "Fetching list of changed Python files..."
+          files=$(git diff --name-only origin/${{ github.base_ref }}...HEAD -- '*.py')
+          echo "$files"
+          echo "CHANGED_FILES<<EOF" >> $GITHUB_ENV
+          echo "$files" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
+      - name: Run unittest suggestion script
+        env:
+          CHANGED_FILES: ${{ env.CHANGED_FILES }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          echo "Running unittest suggestion script for changed files..."
+          for file in $CHANGED_FILES; do
+            echo "Processing file: $file"
+            python src/unittest_suggest.py "$file"
+          done
 
       - name: Run Code Review
         if: github.event_name == 'pull_request' && (github.event.action == 'opened' || github.event.action == 'synchronize')

@@ -94,3 +94,29 @@ class GitHubAPI:
     def get_existing_comments(self, owner, repo, pr_number):
         path = f"/repos/{owner}/{repo}/pulls/{pr_number}/comments"
         return self.make_request("GET", path)
+    
+    def genaral_comment_to_pr(self, repo_owner, repo_name, pr_number, comment_body):
+        """
+        Posts a comment on the specified pull request.
+
+        Args:
+            repo_owner (str): The owner of the repository.
+            repo_name (str): The name of the repository.
+            pr_number (int): The pull request number.
+            comment_body (str): The content of the comment.
+
+        Returns:
+            dict: The response from the GitHub API.
+        """
+        if not comment_body.strip():
+            print("Comment body is empty. Skipping posting the comment.")
+            return
+
+        url = f"{self.base_url}/repos/{repo_owner}/{repo_name}/issues/{pr_number}/comments"
+        data = {"body": comment_body}
+
+        response = requests.post(url, headers=self.headers, json=data)
+        if response.status_code != 201:
+            raise Exception(f"Failed to post comment: {response.status_code} - {response.text}")
+        print("Comment posted successfully.")
+        return response.json()

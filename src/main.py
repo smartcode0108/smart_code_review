@@ -40,7 +40,7 @@ def deduplicate_reviews(reviews):
         seen.add((key, review["line"]))
 
     return filtered
-    
+
 
 def get_changed_lines(hunk):
     changed_lines = {}

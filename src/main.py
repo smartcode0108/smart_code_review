@@ -15,6 +15,19 @@ GITHUB_SHA = os.getenv("GITHUB_SHA")
 
 
 def find_existing_comment(existing_comments, new_comment):
+    """
+    **Docstring:**
+    
+    Summary:
+    Checks if two comments are identical.
+    
+    Args:
+        existing (dict): The first comment.
+        new_comment (dict): The second comment.
+    
+    Returns:
+        bool: True if the comments are identical, False otherwise.
+    """
     for existing in existing_comments:
         if (
             existing["path"] == new_comment["path"]
@@ -26,6 +39,15 @@ def find_existing_comment(existing_comments, new_comment):
 
 
 def deduplicate_reviews(reviews):
+    """
+    Summary line.
+    
+    Args:
+        reviews (list): List of dictionaries containing review data.
+    
+    Returns:
+        list: Filtered list of review dictionaries.
+    """
     seen = set()
     filtered = []
 
@@ -43,6 +65,18 @@ def deduplicate_reviews(reviews):
 
 
 def get_changed_lines(hunk):
+    """
+    **Docstring:**
+    
+    
+    Returns a dictionary containing context and added lines for a diff.
+    
+    Args:
+        hunk (DiffHunk): A DiffHunk object.
+    
+    Returns:
+        dict: A dictionary containing context and added lines.
+    """
     changed_lines = {}
     added_lines = set()
 
@@ -62,6 +96,18 @@ def get_changed_lines(hunk):
 
 
 def process_chunk(hunk, file, github, ollama):
+    """
+    **Docstring:**
+    
+    
+    Review and generate comments for code changes in a GitHub pull request.
+    
+    Args:
+        hunk (dict): A dictionary containing the changed lines in a GitHub pull request.
+    
+    Returns:
+        None
+    """
     try:
         changed_lines = get_changed_lines(hunk)
         if not changed_lines:
@@ -134,6 +180,17 @@ def process_chunk(hunk, file, github, ollama):
 
 
 def main():
+    """
+    Summary line.
+    
+    Args:
+        BASE_BRANCH (str): base branch for code comparison.
+        GITHUB_TOKEN (str): GitHub API token.
+        HEAD (str): current branch for code comparison.
+    
+    Returns:
+        None
+    """
     try:
         github = GitHubAPI(GITHUB_TOKEN)
         ollama = OllamaAPI()

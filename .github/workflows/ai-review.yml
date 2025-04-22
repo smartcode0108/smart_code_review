@@ -107,6 +107,38 @@ jobs:
           echo "CHANGED_FILES<<EOF" >> $GITHUB_ENV
           echo "$files" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
+      
+      - name: Generate docstrings using Ollama
+        run: |
+          for file in $CHANGED_FILES; do
+            if [[ "$file" == *.py ]]; then
+              echo "Running docstring generator on $file"
+              python src/doc_string.py "$file"
+            fi
+          done
+      
+      - name: Commit and push docstring changes
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "📦 Docstring changes detected. Preparing to commit..."
+            git add .
+            LAST_COMMIT_MESSAGE=$(git log -1 --pretty=%B || echo "")
+            if [[ "$LAST_COMMIT_MESSAGE" == "🤖 Auto-generate docstrings using Ollama" ]]; then
+              echo "Amending the last commit..."
+              git commit --amend --no-edit
+            else
+              echo "Creating a new commit..."
+              git commit -m "🤖 Auto-generate docstrings using Ollama"
+            fi
+            git push --force-with-lease origin ${{ github.head_ref }}
+          else
+            echo "✅ No docstring changes to commit."
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
 
       - name: Run Code Review
         if: github.event_name == 'pull_request' && (github.event.action == 'opened' || github.event.action == 'synchronize')
@@ -150,38 +182,6 @@ jobs:
             echo "Processing file: $file"
             python src/unittest_suggest.py "$file"
           done
-
-      - name: Generate docstrings using Ollama
-        run: |
-          for file in $CHANGED_FILES; do
-            if [[ "$file" == *.py ]]; then
-              echo "Running docstring generator on $file"
-              python src/doc_string.py "$file"
-            fi
-          done
-      
-      - name: Commit and push docstring changes
-        run: |
-          git config --global user.name "GitHub Actions"
-          git config --global user.email "actions@github.com"
-          if [ -n "$(git status --porcelain)" ]; then
-            echo "📦 Docstring changes detected. Preparing to commit..."
-            git add .
-            git reset .last_reviewed_sha
-            LAST_COMMIT_MESSAGE=$(git log -1 --pretty=%B || echo "")
-            if [[ "$LAST_COMMIT_MESSAGE" == "🤖 Auto-generate docstrings using Ollama" ]]; then
-              echo "Amending the last commit..."
-              git commit --amend --no-edit
-            else
-              echo "Creating a new commit..."
-              git commit -m "🤖 Auto-generate docstrings using Ollama"
-            fi
-            git push --force-with-lease origin ${{ github.head_ref }}
-          else
-            echo "✅ No docstring changes to commit."
-          fi
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Send Slack Notification
         if: github.event_name == 'pull_request' && github.event.action == 'opened'

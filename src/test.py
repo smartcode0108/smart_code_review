@@ -1,21 +1,20 @@
-def calculate_discount(price, discount):
-    final_price = price - (price * discount / 100)
-    return final_price
+import math 
 
+def multiply_and_add(x,y):return x*y+x
 
 def main():
-    prices = [100, 200, 300, 400]
-    discounts = [10, 20, 30]  # Mismatch in length
+    numbers = [1,2,3,4]
+    results=[]
+    for num in numbers:
+        results.append(multiply_and_add(num, 2))
+    print("Results:",results)
 
-    for i in range(len(prices)):
-        print("Final price:", calculate_discount(prices[i], discounts[i]))
-
-
-    max_price = 0
-    for price in prices:
-        if price > max_price:
-            max_price = price
-    print("Max price is", max_price)
-
+def test_main():
+    numbers = [1,2,3,4]
+    expected = [1*2+1, 2*2+2, 3*2+3, 4*2+4]
+    for i in range(len(numbers)):
+        assert multiply_and_add(numbers[i],2)==expected[i]
 
 main()
+test_main()
+

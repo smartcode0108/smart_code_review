@@ -1,14 +1,12 @@
-
-
 def multiply_and_add(x, y):
     """
     **Docstring:**
-    
+
     Summary line.
-    
+
     Args:
         param1 (type): description.
-    
+
     Returns:
         type: description.
     """
@@ -18,10 +16,10 @@ def multiply_and_add(x, y):
 def main():
     """
     Summary line.
-    
+
     Args:
         num (int): The number to be multiplied and added.
-    
+
     Returns:
         int: The result of multiplying the input number by 2 and adding it to itself.
     """
@@ -35,11 +33,11 @@ def main():
 def test_main():
     """
     Summary line.
-    
+
     Args:
         number (int): description.
         multiplier (int): description.
-    
+
     Returns:
         int: description.
     """

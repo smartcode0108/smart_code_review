@@ -1,21 +1,24 @@
-def calculate_discount(price, discount):
-    final_price = price - (price * discount / 100)
-    return final_price
+import os ,sys
+import math
 
 
-def main():
-    prices = [100, 200, 300, 400]
-    discounts = [10, 20, 30]  # Mismatch in length
+def   my_function(x  ,y): 
+    return x +y
 
-    for i in range(len(prices)):
-        print("Final price:", calculate_discount(prices[i], discounts[i]))
+def exampleFunc(a,b)  :
+   if a>5:
+      print("Hello")
+   else:
+      print("Goodbye")
+      return b
+    
+def calc_area(radius):
+    result = math.pi * radius * radius
+    return result
+  
 
 
-    max_price = 0
-    for price in prices:
-        if price > max_price:
-            max_price = price
-    print("Max price is", max_price)
+def some_long_function_name_that_should_be_split_and_should_use_proper_indentation_when_possible(some_long_argument_name_that_needs_to_be_split,another_long_argument_name,thrid_argument_for_testing):
+    value = some_long_argument_name_that_needs_to_be_split + another_long_argument_name + thrid_argument_for_testing
+    return value
 
-
-main()

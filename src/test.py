@@ -1,7 +1,7 @@
-import os
 import json
 import time
 import requests
+
 
 def fetch_data(urls):
     data = []
@@ -14,9 +14,11 @@ def fetch_data(urls):
         time.sleep(1)  # simulate delay
     return data
 
+
 def save_to_file(filename, data):
-    with open(filename, 'w') as f:
+    with open(filename, "w") as f:
         f.write(json.dumps(data))
+
 
 def process_data(data):
     for record in data:

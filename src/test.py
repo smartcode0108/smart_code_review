@@ -1,21 +1,63 @@
-def calculate_discount(price, discount):
-    final_price = price - (price * discount / 100)
-    return final_price
+import json
+import time
+import requests
 
 
-def main():
-    prices = [100, 200, 300, 400]
-    discounts = [10, 20, 30]  # Mismatch in length
+def fetch_data(urls):
+    """
+    ## Scraping Data from Multiple URLs
+    
+    Extracts data from multiple URLs and returns a list of JSON responses.
+    
+    Args:
+        urls (list): List of URLs to scrape data from.
+    
+    Returns:
+        list: List of JSON responses from successful requests.
+    """
+    data = []
+    for url in urls:
+        response = requests.get(url)
+        if response.status_code == 200:
+            data.append(response.json())
+        else:
+            print(f"Failed to fetch {url}")
+        time.sleep(1)  # simulate delay
+    return data
 
-    for i in range(len(prices)):
-        print("Final price:", calculate_discount(prices[i], discounts[i]))
+
+def save_to_file(filename, data):
+    """
+    **Docstring:**
+    
+    
+    Write the given data as a JSON file.
+    
+    Args:
+        data (dict): The data to be written to the file.
+    
+    Returns:
+        None
+    """
+    with open(filename, "w") as f:
+        f.write(json.dumps(data))
 
 
-    max_price = 0
-    for price in prices:
-        if price > max_price:
-            max_price = price
-    print("Max price is", max_price)
-
-
-main()
+def process_data(data):
+    """
+    **Docstring:**
+    
+    Summary:
+    Prints the name of the user if it is present in the record dictionary.
+    
+    Args:
+        record (dict): A dictionary containing user information.
+    
+    Returns:
+        None
+    """
+    for record in data:
+        if "name" in record:
+            print(f"User: {record['name']}")
+        else:
+            print("Missing name")

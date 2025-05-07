@@ -1,6 +1,5 @@
 import sqlite3
-import os
-import re
+
 
 def get_user_by_email(email):
     conn = sqlite3.connect("users.db")
@@ -10,10 +9,12 @@ def get_user_by_email(email):
     user = cursor.fetchone()
     conn.close()
     return user
+
+
 def send_welcome_email(user):
     subject = "Welcome!"
     body = f"Hi {user['name']}, we're glad to have you."
-    email_address = user['email']
+    email_address = user["email"]
     print(f"Sending email to {email_address}")
     print(f"Subject: {subject}")
     print(f"Body: {body}")

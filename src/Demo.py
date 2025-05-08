@@ -2,6 +2,15 @@ import sqlite3
 
 
 def get_user_by_email(email):
+    """
+    Summary line.
+    
+    Args:
+        email (str): The user's email address.
+    
+    Returns:
+        dict: A dictionary containing the user's information.
+    """
     conn = sqlite3.connect("users.db")
     cursor = conn.cursor()
     query = f"SELECT * FROM users WHERE email = '{email}'"
@@ -12,6 +21,17 @@ def get_user_by_email(email):
 
 
 def send_welcome_email(user):
+    """
+    ## Summary:
+    Sends an email with a personalized greeting and subject line.
+    
+    ## Args:
+    - user (dict): A dictionary containing user information, including name and email.
+    - subject (str): The subject line of the email.
+    
+    ## Returns:
+    None
+    """
     subject = "Welcome!"
     body = f"Hi {user['name']}, we're glad to have you."
     email_address = user["email"]
